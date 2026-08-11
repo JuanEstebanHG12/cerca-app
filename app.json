@@ -3,6 +3,7 @@
     "name": "cerca-mobile",
     "slug": "cerca-mobile",
     "version": "1.0.0",
+    "scheme": "cerca",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,7 +17,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.cercamobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
