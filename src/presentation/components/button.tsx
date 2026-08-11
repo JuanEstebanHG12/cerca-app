@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, StyleProp, StyleSheet, Text, ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, type StyleProp, StyleSheet, Text, type ViewStyle } from 'react-native';
 import { colors } from '../theme/colors';
 
 type ButtonVariant = 'primary' | 'secondary';
