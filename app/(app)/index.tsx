@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DEFAULT_RADIUS_KM, RADIUS_OPTIONS_KM, SearchFilters } from '../../src/domain/models/search-filters';
 import { ListingSearchResult } from '../../src/domain/models/listing';
@@ -195,6 +196,20 @@ export default function Home() {
 
       {renderBody()}
 
+      {/* Entry point for US-03: any signed-in user can tap it, but PublishWizard gates on
+          the 'provider' capacity before showing the form itself — the button never
+          disappears, since becoming a provider is an in-app action, not a separate account. */}
+      <Pressable
+        onPress={() => router.push('/listings/new')}
+        accessibilityRole="button"
+        accessibilityLabel="Publicar un servicio"
+        style={styles.fab}
+      >
+        <Text style={styles.fabLabel} maxFontSizeMultiplier={1.4}>
+          +
+        </Text>
+      </Pressable>
+
       <FiltersSheet
         visible={filtersVisible}
         initial={{ query: queryInput, categoryId, radiusKm }}
@@ -235,4 +250,21 @@ const styles = StyleSheet.create({
   filterButtonLabel: { fontSize: 14, fontWeight: '600', color: colors.ink },
   listContent: { paddingHorizontal: 20 },
   footerLoading: { paddingVertical: 20 },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  fabLabel: { fontSize: 28, fontWeight: '700', color: colors.accentInk, lineHeight: 32 },
 });
