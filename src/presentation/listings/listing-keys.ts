@@ -10,5 +10,7 @@ export const listingKeys = {
   searches: () => [...listingKeys.all(), 'search'] as const,
   search: (filters: SearchFilters) =>
     [...listingKeys.searches(), { ...filters, coords: snapToGrid(filters.coords) }] as const,
+  details: () => [...listingKeys.all(), 'detail'] as const,
+  detail: (id: string) => [...listingKeys.details(), id] as const,
   categories: () => ['categories'] as const,
 };
