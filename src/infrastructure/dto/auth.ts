@@ -1,21 +1,26 @@
-import { Capacity } from '../../domain/models/actor';
+import { z } from 'zod';
+import { capacitySchema } from '../../domain/models/actor';
 
-export interface SignUpApiRequestDto {
-  email: string;
-  password: string;
-  displayName: string;
-  capacities?: Capacity[];
-}
+export const signUpRequestSchema = z.object({
+  email: z.email(),
+  password: z.string().min(8).max(200),
+  displayName: z.string().min(1).max(120),
+  capacities: z.array(capacitySchema).min(1).max(2).default(['customer']).optional(),
+});
+export type SignUpApiRequestDto = z.infer<typeof signUpRequestSchema>;
 
-export interface SignInApiRequestDto {
-  email: string;
-  password: string;
-}
+export const signInRequestSchema = z.object({
+  email: z.email(),
+  password: z.string().min(1).max(200),
+});
+export type SignInApiRequestDto = z.infer<typeof signInRequestSchema>;
 
-export interface RefreshApiRequestDto {
-  refreshToken: string;
-}
+export const refreshRequestSchema = z.object({
+  refreshToken: z.string().min(1),
+});
+export type RefreshApiRequestDto = z.infer<typeof refreshRequestSchema>;
 
-export interface SignOutApiRequestDto {
-  refreshToken: string;
-}
+export const signOutRequestSchema = z.object({
+  refreshToken: z.string().min(1),
+});
+export type SignOutApiRequestDto = z.infer<typeof signOutRequestSchema>;

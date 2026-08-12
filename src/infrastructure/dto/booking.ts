@@ -1,21 +1,24 @@
-export type DeclineReason = 'unavailable' | 'not_a_fit' | 'other';
-export type BookingRole = 'customer' | 'provider';
+import { z } from 'zod';
 
-export interface CreateBookingApiRequestDto {
-  listingId: string;
-  note?: string;
-}
+export const createBookingRequestSchema = z.object({
+  listingId: z.string().uuid(),
+  note: z.string().max(500).optional(),
+});
+export type CreateBookingApiRequestDto = z.infer<typeof createBookingRequestSchema>;
 
-export interface AcceptBookingApiRequestDto {
-  scheduledFor: string;
-}
+export const acceptBookingRequestSchema = z.object({
+  scheduledFor: z.string().datetime(),
+});
+export type AcceptBookingApiRequestDto = z.infer<typeof acceptBookingRequestSchema>;
 
-export interface DeclineBookingApiRequestDto {
-  reason: DeclineReason;
-}
+export const declineBookingRequestSchema = z.object({
+  reason: z.enum(['unavailable', 'not_a_fit', 'other']),
+});
+export type DeclineBookingApiRequestDto = z.infer<typeof declineBookingRequestSchema>;
 
-export interface BookingRoleApiQueryDto {
-  role: BookingRole;
-  cursor?: string;
-  limit?: number;
-}
+export const bookingRoleQuerySchema = z.object({
+  role: z.enum(['customer', 'provider']),
+  cursor: z.string().optional(),
+  limit: z.number().int().min(1).max(50).default(20).optional(),
+});
+export type BookingRoleApiQueryDto = z.infer<typeof bookingRoleQuerySchema>;
