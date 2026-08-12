@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Linking,
   ListRenderItemInfo,
   Pressable,
   RefreshControl,
@@ -128,7 +129,7 @@ export default function Home() {
   function renderBody() {
     if (origin.state.phase === 'loading') return <ListingListSkeleton />;
     if (origin.state.phase === 'needs-city') {
-      const { reason } = origin.state;
+      const { reason, canAskAgain } = origin.state;
       return (
         <View style={styles.cityFallback}>
           <Text style={styles.cityFallbackTitle} maxFontSizeMultiplier={1.6}>
@@ -140,6 +141,20 @@ export default function Home() {
               : 'Puede que el GPS esté apagado. Elige una ciudad mientras tanto.'}
           </Text>
           <CityPicker onSelect={origin.selectCity} />
+          {/* canAskAgain: false means the OS won't show its own permission dialog anymore —
+              tapping "reintentar" would just silently resolve denied again. The only way back
+              is Settings; retry stays underneath for after the user flips it there. */}
+          {!canAskAgain && (
+            <Pressable
+              onPress={() => Linking.openSettings()}
+              accessibilityRole="button"
+              style={styles.cityFallbackRetry}
+            >
+              <Text style={styles.cityFallbackRetryLabel} maxFontSizeMultiplier={1.6}>
+                Abrir configuración
+              </Text>
+            </Pressable>
+          )}
           <Pressable onPress={origin.retryLocation} accessibilityRole="button" style={styles.cityFallbackRetry}>
             <Text style={styles.cityFallbackRetryLabel} maxFontSizeMultiplier={1.6}>
               Reintentar con mi ubicación

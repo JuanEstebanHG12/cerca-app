@@ -9,18 +9,25 @@ import { ExpoLocationProvider } from '../../infrastructure/location/expo-locatio
 type LocationState =
   | { status: 'loading' }
   | { status: 'granted'; coords: Coords }
-  | { status: 'denied'; reason: LocationFailureReason };
+  | { status: 'denied'; reason: LocationFailureReason; canAskAgain: boolean };
 
 export function useLocation() {
   const getCurrentLocation = useMemo(() => new GetCurrentLocationUseCase(new ExpoLocationProvider()), []);
   const [state, setState] = useState<LocationState>({ status: 'loading' });
 
+  // Always goes through requestForegroundPermissionsAsync again (ExpoLocationProvider), so
+  // calling this re-asks the OS for permission, not just re-reads whatever it decided last
+  // time — that's what makes `retry` a real retry and not a re-render of the same denial.
   const request = useCallback(() => {
     setState({ status: 'loading' });
     let cancelled = false;
     getCurrentLocation.execute().then((result) => {
       if (cancelled) return;
-      setState(result.ok ? { status: 'granted', coords: result.coords } : { status: 'denied', reason: result.reason });
+      setState(
+        result.ok
+          ? { status: 'granted', coords: result.coords }
+          : { status: 'denied', reason: result.reason, canAskAgain: result.canAskAgain },
+      );
     });
     return () => {
       cancelled = true;

@@ -8,7 +8,10 @@ import { useLocation } from './use-location';
 export type SearchOriginState =
   | { phase: 'loading' }
   | { phase: 'coords'; coords: Coords }
-  | { phase: 'needs-city'; reason: 'denied' | 'unavailable' }
+  // canAskAgain: false means the OS will no longer show its own permission dialog — retrying
+  // has to open Settings instead of calling requestForegroundPermissionsAsync again, which
+  // would just resolve 'denied' silently and look like a dead button.
+  | { phase: 'needs-city'; reason: 'denied' | 'unavailable'; canAskAgain: boolean }
   | { phase: 'city'; cityId: string };
 
 interface UseSearchOrigin {
@@ -45,6 +48,9 @@ export function useSearchOrigin(): UseSearchOrigin {
     state = {
       phase: 'needs-city',
       reason: location.reason === 'permission_denied' ? 'denied' : 'unavailable',
+      // Only 'permission_denied' ever comes back with canAskAgain: false — a position that's
+      // merely unavailable (GPS off, no fix) can always be retried the same way.
+      canAskAgain: location.reason === 'permission_denied' ? location.canAskAgain : true,
     };
   }
 

@@ -8,9 +8,9 @@ import { LocationError } from '../../domain/errors/location-errors';
 // resolves faster and cheaper on battery than High/Best.
 export class ExpoLocationProvider implements LocationProvider {
   async getCurrentPosition(): Promise<Coords> {
-    const { status } = await Location.requestForegroundPermissionsAsync();
+    const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
-      throw new LocationError('permission_denied', 'Location permission was not granted.');
+      throw new LocationError('permission_denied', 'Location permission was not granted.', canAskAgain);
     }
 
     try {
