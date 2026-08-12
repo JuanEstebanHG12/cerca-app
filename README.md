@@ -85,14 +85,14 @@ that constructs the concrete gateway/storage implementations and hands the use c
 | Sign in / sign up | Done (US-01) | Session persists across restarts; no login flicker on boot. |
 | Home / search | Done (US-02) | Geolocated `GET /listings`, debounced text query, category + radius filters, cursor pagination via `useInfiniteQuery`, virtualized `FlatList`. Four states covered: loading skeleton, error + retry, empty-initial (widen radius), empty-by-filter (clear filters / widen radius). Verified on a physical Android device (Expo Go SDK 57) against seeded data. |
 | Publish a listing | Done (US-03), no photos | 3-step wizard (basics → pricing → location), single RHF form, resumable local draft, `POST /listings` + `POST /listings/:id/publish`. "Become a provider" flow included (`POST /me/capacities/provider` + token refresh — see [US-03-PUBLISH-LISTING.md §2](US-03-PUBLISH-LISTING.md#2-el-contrato-real-verificado-dos-veces)). Verified end-to-end against the real API (all three pricing models); not yet tested on a physical device. |
+| Locale-aware price & distance | Done (US-07) | `formatMoney`/`formatDistance` driven by the device locale (`expo-localization`'s `useLocales()`, reactive to an OS language change mid-session), wired into the real listing card (not just a demo) plus a standalone `/locale-preview` screen that renders the same `Money`/distance side by side in `es-MX`, `en-US`, `de-DE`. Distance switches to miles for the US/Liberia/Myanmar region set. |
+| Location fallback | Done (US-08) | `useSearchOrigin` wraps the existing `useLocation`/`GetCurrentLocationUseCase` (no second expo-location wrapper) and adds a `needs-city` phase: denying the permission (or no GPS fix) replaces the search results with `<CityPicker>` over six seeded cities, and picking one searches from that city's centroid instead of a blank screen. Also reachable standalone at `/location-demo`. |
 
 ### Known gaps (tracked, not silently dropped)
 
 - **No interactive map.** The search is location + list only; there's no draggable map view
   yet (would need `react-native-maps` + a Google Maps API key on Android). The cache-key
   design (`snapToGrid`) is already map-ready — a map view can reuse `useSearchListings` as-is.
-- **Location permission denied** currently shows an inline retry, not the city-picker fallback
-  (that's US-08, out of scope for this task).
 - **No listing detail screen yet** (`app/(app)/listings/[id].tsx` from the target route tree)
   — cards are display-only for now.
 - **No photo upload.** `cerca-api` has a `ListingPhoto` table but no route/use-case that uses

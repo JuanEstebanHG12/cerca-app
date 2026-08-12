@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { ListingSearchResult, ListingStatus } from '../../domain/models/listing';
+import { useDeviceLocale } from '../../infrastructure/locale/device-locale';
 import { colors } from '../theme/colors';
 import { formatDistance, formatPriceFromLabel, formatRatingSummary, statusBadgeLabel } from './format-listing';
 
@@ -14,10 +15,11 @@ interface ListingCardProps {
 // (Cerca.md: "las tres estabilizaciones, o memo() no sirve de nada") — that's on the FlatList
 // wiring in the screen, not on this component.
 export const ListingCard = memo(function ListingCard({ listing }: ListingCardProps) {
-  const price = formatPriceFromLabel(listing.priceFrom);
+  const locale = useDeviceLocale();
+  const price = formatPriceFromLabel(listing.priceFrom, locale);
   const badge = statusBadgeLabel(listing.status);
   const ratingSummary = formatRatingSummary(listing.ratingAvg, listing.ratingCount);
-  const distance = formatDistance(listing.distanceMeters);
+  const distance = formatDistance(listing.distanceMeters, locale);
 
   // One accessible group per card: without this a screen reader stops at the image, the
   // title, the price, and the meta row separately — 5,000 results become 20,000 stops.

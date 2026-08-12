@@ -13,15 +13,19 @@ import {
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DEFAULT_RADIUS_KM, RADIUS_OPTIONS_KM, SearchFilters } from '../../src/domain/models/search-filters';
+import { Coords } from '../../src/domain/models/coords';
 import { ListingSearchResult } from '../../src/domain/models/listing';
+import { findCity } from '../../src/domain/models/city';
 import { SignOutButton } from '../../src/presentation/auth/sign-out-button';
+import { CityPicker } from '../../src/presentation/components/city-picker';
+import { LinkButton } from '../../src/presentation/components/link-button';
 import { colors } from '../../src/presentation/theme/colors';
 import { EmptyState } from '../../src/presentation/listings/empty-state';
 import { FilterDraft, FiltersSheet } from '../../src/presentation/listings/filters-sheet';
 import { LISTING_CARD_HEIGHT, ListingCard } from '../../src/presentation/listings/listing-card';
 import { ListingListSkeleton } from '../../src/presentation/listings/listing-card-skeleton';
 import { useSearchListings } from '../../src/presentation/listings/use-search-listings';
-import { useLocation } from '../../src/presentation/location/use-location';
+import { useSearchOrigin } from '../../src/presentation/location/use-search-origin';
 
 const MAX_RADIUS_KM = RADIUS_OPTIONS_KM[RADIUS_OPTIONS_KM.length - 1];
 
@@ -31,7 +35,7 @@ function nextRadius(current: number): number {
 }
 
 export default function Home() {
-  const location = useLocation();
+  const origin = useSearchOrigin();
   const [queryInput, setQueryInput] = useState('');
   const [committedQuery, setCommittedQuery] = useState('');
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
@@ -47,15 +51,23 @@ export default function Home() {
     return () => clearTimeout(id);
   }, [queryInput]);
 
-  const filters: SearchFilters | null =
-    location.status === 'granted'
-      ? {
-          coords: location.coords,
-          radiusKm,
-          query: committedQuery || undefined,
-          categoryId,
-        }
-      : null;
+  // US-08: no device coordinates doesn't mean no search — a picked city resolves to its
+  // centroid (findCity) and searches from there instead, same SearchFilters shape either way.
+  const originCoords: Coords | undefined =
+    origin.state.phase === 'coords'
+      ? origin.state.coords
+      : origin.state.phase === 'city'
+        ? findCity(origin.state.cityId)?.coords
+        : undefined;
+
+  const filters: SearchFilters | null = originCoords
+    ? {
+        coords: originCoords,
+        radiusKm,
+        query: committedQuery || undefined,
+        categoryId,
+      }
+    : null;
 
   const search = useSearchListings(filters);
   const items = useMemo(() => search.data?.pages.flatMap((page) => page.items) ?? [], [search.data]);
@@ -90,18 +102,30 @@ export default function Home() {
     setFiltersVisible(false);
   }
 
-  // Ordered explicitly, not as parallel ternaries: location 'denied' must win over search
+  // Ordered explicitly, not as parallel ternaries: 'needs-city' must win over search
   // 'pending', because a disabled query (no coords yet) stays 'pending' forever and would
-  // otherwise show the loading skeleton instead of the "no location" state.
+  // otherwise show the loading skeleton instead of the city picker.
   function renderBody() {
-    if (location.status === 'loading') return <ListingListSkeleton />;
-    if (location.status === 'denied') {
+    if (origin.state.phase === 'loading') return <ListingListSkeleton />;
+    if (origin.state.phase === 'needs-city') {
+      const { reason } = origin.state;
       return (
-        <EmptyState
-          title="No pudimos acceder a tu ubicación"
-          message="Cerca necesita tu ubicación para mostrarte servicios cercanos."
-          primaryAction={{ label: 'Reintentar', onPress: location.retry }}
-        />
+        <View style={styles.cityFallback}>
+          <Text style={styles.cityFallbackTitle} maxFontSizeMultiplier={1.6}>
+            {reason === 'denied' ? 'No compartiste tu ubicación' : 'No pudimos acceder a tu ubicación'}
+          </Text>
+          <Text style={styles.cityFallbackMessage} maxFontSizeMultiplier={1.8}>
+            {reason === 'denied'
+              ? 'Elige una ciudad para seguir buscando servicios cerca de ti.'
+              : 'Puede que el GPS esté apagado. Elige una ciudad mientras tanto.'}
+          </Text>
+          <CityPicker onSelect={origin.selectCity} />
+          <Pressable onPress={origin.retryLocation} accessibilityRole="button" style={styles.cityFallbackRetry}>
+            <Text style={styles.cityFallbackRetryLabel} maxFontSizeMultiplier={1.6}>
+              Reintentar con mi ubicación
+            </Text>
+          </Pressable>
+        </View>
       );
     }
     if (search.status === 'pending') return <ListingListSkeleton />;
@@ -170,6 +194,14 @@ export default function Home() {
         <Text style={styles.tagline} maxFontSizeMultiplier={1.8}>
           Servicios cerca de ti
         </Text>
+        {origin.state.phase === 'city' && (
+          <Pressable onPress={origin.retryLocation} accessibilityRole="button" style={styles.cityBanner}>
+            <Text style={styles.cityBannerText} maxFontSizeMultiplier={1.6}>
+              Buscando cerca de {findCity(origin.state.cityId)?.name} ·{' '}
+              <Text style={styles.cityBannerAction}>Cambiar</Text>
+            </Text>
+          </Pressable>
+        )}
         <View style={styles.searchRow}>
           <TextInput
             placeholder="Buscar un servicio…"
@@ -192,6 +224,15 @@ export default function Home() {
             </Text>
           </Pressable>
         </View>
+      </View>
+
+      {/* Quick access to the standalone AC proofs (Cerca.md: "si no lo pueden explicar, no
+          lo entregan") — the behaviour itself lives in the real search above, these just make
+          it easy to demo US-07/US-08 in isolation without changing the device's language or
+          revoking a permission mid-demo. */}
+      <View style={styles.qaLinks}>
+        <LinkButton prompt="US-07:" actionLabel="precio y distancia por locale" onPress={() => router.push('/locale-preview')} />
+        <LinkButton prompt="US-08:" actionLabel="ubicación con degradación elegante" onPress={() => router.push('/location-demo')} />
       </View>
 
       {renderBody()}
@@ -250,6 +291,15 @@ const styles = StyleSheet.create({
   filterButtonLabel: { fontSize: 14, fontWeight: '600', color: colors.ink },
   listContent: { paddingHorizontal: 20 },
   footerLoading: { paddingVertical: 20 },
+  cityBanner: { alignSelf: 'flex-start', minHeight: 24, justifyContent: 'center' },
+  cityBannerText: { fontSize: 13, color: colors.inkMuted },
+  cityBannerAction: { color: colors.accent, fontWeight: '600' },
+  cityFallback: { flex: 1, padding: 20, gap: 16 },
+  cityFallbackTitle: { fontSize: 17, fontWeight: '700', color: colors.ink },
+  cityFallbackMessage: { fontSize: 14, color: colors.inkMuted },
+  cityFallbackRetry: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' },
+  cityFallbackRetryLabel: { color: colors.accent, fontSize: 14, fontWeight: '600' },
+  qaLinks: { paddingHorizontal: 20, gap: 2 },
   fab: {
     position: 'absolute',
     right: 20,
