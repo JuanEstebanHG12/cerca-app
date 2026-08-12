@@ -12,6 +12,7 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
     response = await fetch(`${API_BASE_URL}${path}`, {
       ...init,
       headers: { 'Content-Type': 'application/json', ...init.headers },
+      cache: 'no-store',
     });
   } catch (cause) {
     // No response at all: offline, wrong host, server down. Not the same failure as a 4xx.
