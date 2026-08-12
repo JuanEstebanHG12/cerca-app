@@ -1,5 +1,6 @@
 import { AuthGateway } from '../../application/ports/auth-gateway';
 import { SignInError, SignUpError } from '../../domain/errors/auth-errors';
+import { SignInApiRequestDto, SignOutApiRequestDto, SignUpApiRequestDto } from '../dto/auth';
 import { Session, sessionSchema } from '../../domain/models/session';
 import { ApiError, NetworkError } from './api-errors';
 import { httpClient } from './http-client';
@@ -10,7 +11,8 @@ import { httpClient } from './http-client';
 export class AuthApiGateway implements AuthGateway {
   async signIn(email: string, password: string): Promise<Session> {
     try {
-      const raw = await httpClient.post<unknown>('/auth/sign-in', { email, password });
+      const body: SignInApiRequestDto = { email, password };
+      const raw = await httpClient.post<unknown>('/auth/sign-in', body);
       // `parse`, never `as`: if the backend renames a field, this throws here with a clear
       // message instead of shipping `undefined` three screens later (Cerca.md, "el límite
       // con la red se valida, no se promete").
@@ -28,7 +30,8 @@ export class AuthApiGateway implements AuthGateway {
 
   async signUp(email: string, password: string, displayName: string): Promise<Session> {
     try {
-      const raw = await httpClient.post<unknown>('/auth/sign-up', { email, password, displayName });
+      const body: SignUpApiRequestDto = { email, password, displayName };
+      const raw = await httpClient.post<unknown>('/auth/sign-up', body);
       return sessionSchema.parse(raw);
     } catch (error) {
       if (error instanceof ApiError && error.status === 409 && error.code === 'EMAIL_TAKEN') {
@@ -42,6 +45,7 @@ export class AuthApiGateway implements AuthGateway {
   }
 
   async signOut(refreshToken: string): Promise<void> {
-    await httpClient.post<void>('/auth/sign-out', { refreshToken });
+    const body: SignOutApiRequestDto = { refreshToken };
+    await httpClient.post<void>('/auth/sign-out', body);
   }
 }
