@@ -10,4 +10,8 @@ export const colors = {
   accent: '#FF9F45',
   accentInk: '#101C24',
   danger: '#FF6B5E',
+  // Status badges (paused, under review) need their own color: distinct from danger (removed)
+  // and never the only signal — every badge using this also carries text, not just a dot.
+  warning: '#F2C94C',
+  warningInk: '#101C24',
 } as const;
