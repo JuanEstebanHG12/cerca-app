@@ -5,6 +5,7 @@ import {
   ListRenderItemInfo,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,8 +18,8 @@ import { Coords } from '../../src/domain/models/coords';
 import { ListingSearchResult } from '../../src/domain/models/listing';
 import { findCity } from '../../src/domain/models/city';
 import { SignOutButton } from '../../src/presentation/auth/sign-out-button';
+import { Chip } from '../../src/presentation/components/chip';
 import { CityPicker } from '../../src/presentation/components/city-picker';
-import { LinkButton } from '../../src/presentation/components/link-button';
 import { colors } from '../../src/presentation/theme/colors';
 import { EmptyState } from '../../src/presentation/listings/empty-state';
 import { FilterDraft, FiltersSheet } from '../../src/presentation/listings/filters-sheet';
@@ -26,6 +27,7 @@ import { LISTING_CARD_HEIGHT, ListingCard } from '../../src/presentation/listing
 import { ListingListSkeleton } from '../../src/presentation/listings/listing-card-skeleton';
 import { useSearchListings } from '../../src/presentation/listings/use-search-listings';
 import { useSearchOrigin } from '../../src/presentation/location/use-search-origin';
+import { useDeviceLocale } from '../../src/infrastructure/locale/device-locale';
 
 const MAX_RADIUS_KM = RADIUS_OPTIONS_KM[RADIUS_OPTIONS_KM.length - 1];
 
@@ -34,13 +36,28 @@ function nextRadius(current: number): number {
   return wider ?? MAX_RADIUS_KM;
 }
 
+// US-07: how the user wants to *read* price and distance — a preference of whoever is
+// looking, independent of where they're searching from (US-08's origin). 'device' isn't a
+// fourth locale, it's "don't override, use whatever the OS is already set to".
+const DEVICE_LOCALE_ID = 'device';
+const PRICE_LOCALE_OPTIONS: readonly { id: string; label: string }[] = [
+  { id: DEVICE_LOCALE_ID, label: 'Mi dispositivo' },
+  { id: 'es-MX', label: 'es-MX' },
+  { id: 'en-US', label: 'en-US' },
+  { id: 'de-DE', label: 'de-DE' },
+];
+
 export default function Home() {
   const origin = useSearchOrigin();
+  const deviceLocale = useDeviceLocale();
   const [queryInput, setQueryInput] = useState('');
   const [committedQuery, setCommittedQuery] = useState('');
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const [radiusKm, setRadiusKm] = useState<number>(DEFAULT_RADIUS_KM);
   const [filtersVisible, setFiltersVisible] = useState(false);
+  const [priceLocaleId, setPriceLocaleId] = useState<string>(DEVICE_LOCALE_ID);
+
+  const priceLocale = priceLocaleId === DEVICE_LOCALE_ID ? deviceLocale : priceLocaleId;
 
   const hasActiveFilters = committedQuery !== '' || categoryId !== undefined;
 
@@ -72,7 +89,10 @@ export default function Home() {
   const search = useSearchListings(filters);
   const items = useMemo(() => search.data?.pages.flatMap((page) => page.items) ?? [], [search.data]);
 
-  const renderItem = useCallback(({ item }: ListRenderItemInfo<ListingSearchResult>) => <ListingCard listing={item} />, []);
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<ListingSearchResult>) => <ListingCard listing={item} locale={priceLocale} />,
+    [priceLocale],
+  );
   const keyExtractor = useCallback((item: ListingSearchResult) => item.id, []);
   const getItemLayout = useCallback(
     (_: unknown, index: number) => ({ length: LISTING_CARD_HEIGHT, offset: LISTING_CARD_HEIGHT * index, index }),
@@ -224,15 +244,25 @@ export default function Home() {
             </Text>
           </Pressable>
         </View>
-      </View>
 
-      {/* Quick access to the standalone AC proofs (Cerca.md: "si no lo pueden explicar, no
-          lo entregan") — the behaviour itself lives in the real search above, these just make
-          it easy to demo US-07/US-08 in isolation without changing the device's language or
-          revoking a permission mid-demo. */}
-      <View style={styles.qaLinks}>
-        <LinkButton prompt="US-07:" actionLabel="precio y distancia por locale" onPress={() => router.push('/locale-preview')} />
-        <LinkButton prompt="US-08:" actionLabel="ubicación con degradación elegante" onPress={() => router.push('/location-demo')} />
+        {/* US-07: the same listing (same Money, same distanceMeters) read three different
+            ways — this drives every card below, not a separate screen someone has to know to
+            go look for. */}
+        <View style={styles.localeRow}>
+          <Text style={styles.localeLabel} maxFontSizeMultiplier={1.6}>
+            Precios en
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.localeChips}>
+            {PRICE_LOCALE_OPTIONS.map((option) => (
+              <Chip
+                key={option.id}
+                label={option.label}
+                selected={option.id === priceLocaleId}
+                onPress={() => setPriceLocaleId(option.id)}
+              />
+            ))}
+          </ScrollView>
+        </View>
       </View>
 
       {renderBody()}
@@ -299,7 +329,9 @@ const styles = StyleSheet.create({
   cityFallbackMessage: { fontSize: 14, color: colors.inkMuted },
   cityFallbackRetry: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' },
   cityFallbackRetryLabel: { color: colors.accent, fontSize: 14, fontWeight: '600' },
-  qaLinks: { paddingHorizontal: 20, gap: 2 },
+  localeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
+  localeLabel: { fontSize: 13, fontWeight: '600', color: colors.inkMuted },
+  localeChips: { flexDirection: 'row', gap: 8 },
   fab: {
     position: 'absolute',
     right: 20,
