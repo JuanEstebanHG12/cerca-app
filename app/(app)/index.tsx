@@ -60,7 +60,11 @@ export default function Home() {
   const search = useSearchListings(filters);
   const items = useMemo(() => search.data?.pages.flatMap((page) => page.items) ?? [], [search.data]);
 
-  const renderItem = useCallback(({ item }: ListRenderItemInfo<ListingSearchResult>) => <ListingCard listing={item} />, []);
+  const openListing = useCallback((id: string) => router.push(`/listings/${id}`), []);
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<ListingSearchResult>) => <ListingCard listing={item} onPress={openListing} />,
+    [openListing],
+  );
   const keyExtractor = useCallback((item: ListingSearchResult) => item.id, []);
   const getItemLayout = useCallback(
     (_: unknown, index: number) => ({ length: LISTING_CARD_HEIGHT, offset: LISTING_CARD_HEIGHT * index, index }),

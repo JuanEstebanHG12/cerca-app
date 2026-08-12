@@ -1,6 +1,7 @@
 import { CreateListingInput } from '../../domain/models/create-listing';
 import { Listing, ListingSearchPage } from '../../domain/models/listing';
 import { SearchFilters } from '../../domain/models/search-filters';
+import { UpdateListingInput } from '../../domain/models/update-listing';
 
 // Port: the application knows it can search listings and get a page back. It has no idea this
 // is a cursor-paginated GET with query params, or that the response is validated with zod —
@@ -12,4 +13,9 @@ export interface ListingGateway {
   // its own transition, not a side effect of creation.
   create(input: CreateListingInput, accessToken: string): Promise<Listing>;
   publish(id: string, accessToken: string): Promise<Listing>;
+  // Public — no accessToken. Same detail shape `create`/`publish` return.
+  getById(id: string): Promise<Listing>;
+  // The server is the one enforcing ownership (canEditListing/canChangePrice) — this just
+  // carries the PATCH and lets whatever 403 comes back surface as-is.
+  update(id: string, input: UpdateListingInput, accessToken: string): Promise<Listing>;
 }
