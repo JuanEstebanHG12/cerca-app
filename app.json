@@ -28,7 +28,13 @@
       "expo-status-bar",
       "expo-secure-store",
       "expo-image",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Cerca usa tu ubicación para mostrarte servicios cercanos."
+        }
+      ]
     ]
   }
 }
