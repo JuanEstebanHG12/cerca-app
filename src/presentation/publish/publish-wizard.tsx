@@ -11,11 +11,12 @@ import { BecomeProviderPrompt } from './become-provider-prompt';
 import { PUBLISH_FORM_DEFAULTS, publishFormSchema, PublishFormValues, STEP_FIELDS } from './publish-form-schema';
 import { PublishStepBasics } from './publish-step-basics';
 import { PublishStepLocation } from './publish-step-location';
+import { PublishStepPhotos } from './publish-step-photos';
 import { PublishStepPricing } from './publish-step-pricing';
 import { useCreateListing } from './use-create-listing';
 import { usePublishDraft } from './use-publish-draft';
 
-const STEP_TITLES = ['Datos básicos', 'Precio', 'Ubicación'];
+const STEP_TITLES = ['Datos básicos', 'Precio', 'Ubicación', 'Fotos'];
 const LAST_STEP = STEP_TITLES.length - 1;
 
 const SUBMIT_ERROR_MESSAGES: Record<string, string> = {
@@ -45,6 +46,10 @@ function PublishWizardForm() {
   const createListing = useCreateListing();
   const [step, setStep] = useState(0);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Set only when the listing published but some/all photos didn't upload — distinct from
+  // submitError (which blocks the wizard mid-flow): the listing already exists and is live, so
+  // this is a heads-up on the way out, not a reason to keep the user stuck on this screen.
+  const [photosWarning, setPhotosWarning] = useState<string | null>(null);
 
   const form = useForm<PublishFormValues>({
     resolver: zodResolver(publishFormSchema),
@@ -98,7 +103,17 @@ function PublishWizardForm() {
     const outcome = await createListing.mutateAsync(values);
     if (outcome.ok) {
       await draft.clear();
-      router.back();
+      if (outcome.photosFailed > 0) {
+        // The listing is already live — navigating away silently would hide that its photos
+        // didn't make it. Stay one more beat and say so plainly instead of pretending they did.
+        setPhotosWarning(
+          outcome.photosFailed === 1
+            ? 'Publicamos tu anuncio, pero 1 foto no se pudo subir. Podrás agregarla más adelante.'
+            : `Publicamos tu anuncio, pero ${outcome.photosFailed} fotos no se pudieron subir. Podrás agregarlas más adelante.`,
+        );
+      } else {
+        router.back();
+      }
     } else {
       setSubmitError(SUBMIT_ERROR_MESSAGES[outcome.reason] ?? SUBMIT_ERROR_MESSAGES.unexpected_error);
     }
@@ -110,6 +125,24 @@ function PublishWizardForm() {
     // change should normally prevent this. Better an explicit message than a submit button
     // that silently does nothing.
     setSubmitError('Revisa los pasos anteriores, falta algún dato.');
+  }
+
+  if (photosWarning) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <Text style={styles.title} maxFontSizeMultiplier={1.6}>
+            Anuncio publicado
+          </Text>
+          <Text style={styles.photosWarning} accessibilityLiveRegion="polite" maxFontSizeMultiplier={1.8}>
+            {photosWarning}
+          </Text>
+        </View>
+        <View style={styles.footer}>
+          <Button label="Volver" onPress={() => router.back()} style={styles.footerButton} />
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -129,6 +162,7 @@ function PublishWizardForm() {
         {step === 2 ? (
           <PublishStepLocation control={form.control} errors={form.formState.errors} setValue={form.setValue} />
         ) : null}
+        {step === 3 ? <PublishStepPhotos control={form.control} /> : null}
 
         {submitError ? (
           <Text style={styles.submitError} accessibilityLiveRegion="polite" maxFontSizeMultiplier={1.8}>
@@ -168,6 +202,7 @@ const styles = StyleSheet.create({
   progress: { fontSize: 13, color: colors.inkMuted },
   content: { padding: 20, gap: 20 },
   submitError: { fontSize: 14, color: colors.danger },
+  photosWarning: { fontSize: 15, color: colors.warning, lineHeight: 22, marginTop: 12 },
   footer: { flexDirection: 'row', gap: 12, padding: 20, borderTopWidth: 1, borderTopColor: colors.surfaceBorder },
   footerButton: { flex: 1 },
 });
