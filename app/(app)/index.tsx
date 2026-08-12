@@ -29,6 +29,11 @@ export default function Home() {
         actionLabel="ver precios y distancia por locale"
         onPress={() => router.push('/locale-preview')}
       />
+      <LinkButton
+        prompt="US-08:"
+        actionLabel="ubicación con degradación elegante"
+        onPress={() => router.push('/location-demo')}
+      />
       <SignOutButton />
     </View>
   );
