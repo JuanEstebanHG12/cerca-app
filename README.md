@@ -18,6 +18,17 @@ pnpm ios           # expo run:ios
 |---|---|---|
 | `EXPO_PUBLIC_API_BASE_URL` | `http://localhost:3333/v1` | Only `EXPO_PUBLIC_*` vars are inlined into the bundle. Android emulator: use `10.0.2.2` instead of `localhost`. Physical device: use your machine's LAN IP. Override via a gitignored `.env.local`. |
 
+### Publishing a listing
+
+Requires the 'provider' capacity, which the app grants in-flow (tap "Publicar" → "Convertirme
+en proveedor" if you signed in as a plain customer) — `provider@cerca.app` already has it from
+the seed. Access tokens bake in capacities at issue time (see
+[US-03-PUBLISH-LISTING.md §2](US-03-PUBLISH-LISTING.md#2-el-contrato-real-verificado-dos-veces)),
+so becoming a provider triggers a token refresh automatically; nothing to do manually.
+
+There's no photo upload — the backend doesn't implement `photos:presign` yet (verified against
+the real `cerca-api` source, not assumed from the product doc). The wizard is 3 steps, not 4.
+
 ### Backend data
 
 The Home/search screen has nothing to show against an empty database. From `cerca-api`, run:
@@ -73,6 +84,7 @@ that constructs the concrete gateway/storage implementations and hands the use c
 |---|---|---|
 | Sign in / sign up | Done (US-01) | Session persists across restarts; no login flicker on boot. |
 | Home / search | Done (US-02) | Geolocated `GET /listings`, debounced text query, category + radius filters, cursor pagination via `useInfiniteQuery`, virtualized `FlatList`. Four states covered: loading skeleton, error + retry, empty-initial (widen radius), empty-by-filter (clear filters / widen radius). Verified on a physical Android device (Expo Go SDK 57) against seeded data. |
+| Publish a listing | Done (US-03), no photos | 3-step wizard (basics → pricing → location), single RHF form, resumable local draft, `POST /listings` + `POST /listings/:id/publish`. "Become a provider" flow included (`POST /me/capacities/provider` + token refresh — see [US-03-PUBLISH-LISTING.md §2](US-03-PUBLISH-LISTING.md#2-el-contrato-real-verificado-dos-veces)). Verified end-to-end against the real API (all three pricing models); not yet tested on a physical device. |
 
 ### Known gaps (tracked, not silently dropped)
 
@@ -83,6 +95,16 @@ that constructs the concrete gateway/storage implementations and hands the use c
   (that's US-08, out of scope for this task).
 - **No listing detail screen yet** (`app/(app)/listings/[id].tsx` from the target route tree)
   — cards are display-only for now.
+- **No photo upload.** `cerca-api` has a `ListingPhoto` table but no route/use-case that uses
+  it — no `photos:presign`, nothing. The publish wizard is 3 steps, not 4, until that exists.
+- **No "My Listings" screen.** Resuming a draft is local (the in-progress form autosaves to
+  `AsyncStorage` and restores on reopen) — there's no server-backed listing management screen
+  yet; that's US-04's scope (editing your own listings).
+- **No silent access-token refresh.** The app reads the current access token once per
+  sign-in/sign-up/become-provider and holds it in memory; a request made after the 15-minute
+  token TTL expires surfaces as a session error, not a transparent retry. The one place this
+  was actually load-bearing (right after becoming a provider) is handled explicitly — see
+  [US-03-PUBLISH-LISTING.md §4.3](US-03-PUBLISH-LISTING.md#43-becomeprovider-no-es-una-llamada-son-dos).
 - **No i18n library wired in yet.** UI copy is hardcoded Spanish, consistent with the existing
   auth screens; `Intl` is used directly for money/rating/distance formatting.
 - **`cerca-app` hand-mirrors `@cerca/contract` instead of importing it.** The two repos aren't a

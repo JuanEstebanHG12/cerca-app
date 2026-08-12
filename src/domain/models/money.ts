@@ -29,9 +29,28 @@ function minorUnitDigits(currency: CurrencyCode): number {
 
 // Currency is a fact about the listing (the provider fixed it); locale is a preference of
 // whoever is looking. `undefined` locale defers to the device's own setting.
+//
+// `currencyDisplay: 'code'` is deliberate, not the `Intl` default ('symbol'): COP, MXN and USD
+// — the three currencies this product actually offers (CURRENCY_OPTIONS) — all conventionally
+// render with the same bare "$" glyph. Left at the default, `Intl` only disambiguates a
+// currency from the viewer's own locale (e.g. "$" in en-US for USD, but "US$" for the same
+// amount viewed from es-MX) — which is why the same code showed "COP" in one place and a bare
+// "$" in another: it was tracking the viewer's locale, not the currency itself, and COP always
+// loses that disambiguation on-device while USD or MXN sometimes doesn't. `'code'` makes it
+// show "COP 129.990" / "USD 450.00" / "MXN 1,299.90" everywhere, independent of locale — the
+// currency is a fact about the listing and must never depend on who's looking.
 export function formatMoney(money: Money, locale?: string): string {
   const digits = minorUnitDigits(money.currency);
-  return new Intl.NumberFormat(locale, { style: 'currency', currency: money.currency }).format(
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: money.currency, currencyDisplay: 'code' }).format(
     money.amountMinor / 10 ** digits,
   );
+}
+
+// The inverse of `formatMoney`'s division, for the publish form: a provider types a price in
+// major units ("450"), and this is the one place that turns it into the integer minor units
+// `Money` requires — same `minorUnitDigits` table, so a currency added here never needs a
+// second, inconsistent conversion written elsewhere.
+export function toMinorUnits(majorAmount: number, currency: CurrencyCode): number {
+  const digits = minorUnitDigits(currency);
+  return Math.round(majorAmount * 10 ** digits);
 }

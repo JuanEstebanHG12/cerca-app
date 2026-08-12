@@ -33,6 +33,12 @@
         {
           "locationWhenInUsePermission": "Cerca usa tu ubicación para mostrarte servicios cerca de ti."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cerca usa tus fotos para que agregues imágenes a tu anuncio."
+        }
       ]
     ]
   }

@@ -1,5 +1,6 @@
 import { AuthGateway } from '../../application/ports/auth-gateway';
-import { SignInError, SignUpError } from '../../domain/errors/auth-errors';
+import { BecomeProviderError, SignInError, SignUpError } from '../../domain/errors/auth-errors';
+import { Actor, actorSchema } from '../../domain/models/actor';
 import { Session, sessionSchema } from '../../domain/models/session';
 import { ApiError, NetworkError } from './api-errors';
 import { httpClient } from './http-client';
@@ -43,5 +44,29 @@ export class AuthApiGateway implements AuthGateway {
 
   async signOut(refreshToken: string): Promise<void> {
     await httpClient.post<void>('/auth/sign-out', { refreshToken });
+  }
+
+  async becomeProvider(accessToken: string): Promise<Actor> {
+    try {
+      const raw = await httpClient.post<unknown>('/me/capacities/provider', undefined, accessToken);
+      return actorSchema.parse(raw);
+    } catch (error) {
+      if (error instanceof NetworkError) {
+        throw new BecomeProviderError('network_error', error.message);
+      }
+      throw new BecomeProviderError('unexpected_error', error instanceof Error ? error.message : undefined);
+    }
+  }
+
+  async refresh(refreshToken: string): Promise<Session> {
+    try {
+      const raw = await httpClient.post<unknown>('/auth/refresh', { refreshToken });
+      return sessionSchema.parse(raw);
+    } catch (error) {
+      if (error instanceof NetworkError) {
+        throw new BecomeProviderError('network_error', error.message);
+      }
+      throw new BecomeProviderError('unexpected_error', error instanceof Error ? error.message : undefined);
+    }
   }
 }
