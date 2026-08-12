@@ -45,6 +45,12 @@ export class ListingApiGateway implements ListingGateway {
 
 function toCreateListingError(error: unknown): CreateListingError {
   if (error instanceof ApiError) {
+    // The screen only ever shows the generic copy mapped to `reason` (Cerca.md: server details
+    // aren't user-facing text) — but that means a 422's actual field-level cause is otherwise
+    // invisible during development. __DEV__ only, so this never ships to a release build.
+    if (__DEV__ && (error.status === 400 || error.status === 422)) {
+      console.warn('[create-listing] server rejected the payload:', error.message);
+    }
     if (error.status === 403) return new CreateListingError('forbidden', error.message);
     if (error.status === 422 || error.status === 400) return new CreateListingError('validation_error', error.message);
     return new CreateListingError('unexpected_error', error.message);

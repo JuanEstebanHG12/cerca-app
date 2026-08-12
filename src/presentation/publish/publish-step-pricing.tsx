@@ -119,12 +119,12 @@ export function PublishStepPricing({ control, errors }: PublishStepPricingProps)
               <View style={styles.field}>
                 <TextField
                   label="Horas mínimas"
-                  hint="por reserva"
+                  hint="por reserva, de 1 a 12"
                   placeholder="2"
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
-                  keyboardType="decimal-pad"
+                  keyboardType="number-pad"
                 />
                 {errors.minimumHours ? (
                   <Text style={styles.error} maxFontSizeMultiplier={1.8}>
