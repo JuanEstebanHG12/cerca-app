@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { SplashScreen, Stack } from 'expo-router';
 import { AuthProvider, useAuth } from '../src/presentation/auth/auth-context';
+import { queryClient } from '../src/presentation/query/query-client';
 
 // Keep the native splash screen up until we know whether a session exists. Without this, the
 // very first frame would render before RestoreSessionUseCase resolves — the "parpadeo de
@@ -38,8 +40,10 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootNavigator />
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RootNavigator />
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
