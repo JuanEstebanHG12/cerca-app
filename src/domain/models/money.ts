@@ -35,3 +35,12 @@ export function formatMoney(money: Money, locale?: string): string {
     money.amountMinor / 10 ** digits,
   );
 }
+
+// The inverse of `formatMoney`'s division, for the publish form: a provider types a price in
+// major units ("450"), and this is the one place that turns it into the integer minor units
+// `Money` requires — same `minorUnitDigits` table, so a currency added here never needs a
+// second, inconsistent conversion written elsewhere.
+export function toMinorUnits(majorAmount: number, currency: CurrencyCode): number {
+  const digits = minorUnitDigits(currency);
+  return Math.round(majorAmount * 10 ** digits);
+}

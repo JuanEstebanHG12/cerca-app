@@ -17,3 +17,12 @@ export class SignUpError extends Error {
     this.name = 'SignUpError';
   }
 }
+
+export type BecomeProviderFailureReason = 'network_error' | 'unexpected_error';
+
+export class BecomeProviderError extends Error {
+  constructor(readonly reason: BecomeProviderFailureReason, message?: string) {
+    super(message ?? reason);
+    this.name = 'BecomeProviderError';
+  }
+}

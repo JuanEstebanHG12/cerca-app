@@ -16,3 +16,12 @@ export const actorSchema = z.object({
   platformRole: platformRoleSchema,
 });
 export type Actor = z.infer<typeof actorSchema>;
+
+// Mirrors the backend's `has(actor, capacity)` (@cerca/contract, auth/actor.ts). This is a UX
+// check only — it decides whether the app shows the "publish a listing" entry point, never
+// whether the request succeeds. The server re-checks `listing:create` on every `POST
+// /listings` regardless of what this returns (Cerca.md: "el cliente nunca sustituye [la
+// autoridad del servidor], la refleja").
+export function hasCapacity(actor: Actor, capacity: Capacity): boolean {
+  return actor.capacities.includes(capacity);
+}
