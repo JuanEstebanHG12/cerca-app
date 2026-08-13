@@ -1,0 +1,213 @@
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+
+export const resources = {
+  es: {
+    translation: {
+      appName: 'Cerca',
+      tagline: 'Mercado local de servicios',
+      nav: {
+        search: 'Buscar',
+        bookings: 'Reservas',
+        providerHub: 'Mis Anuncios',
+        adminPanel: 'Administración',
+        profile: 'Perfil',
+      },
+      capacities: {
+        customer: 'Cliente',
+        provider: 'Proveedor',
+        both: 'Cliente y Proveedor',
+      },
+      roles: {
+        user: 'Usuario',
+        moderator: 'Moderador',
+        admin: 'Administrador',
+      },
+      search: {
+        title: 'Servicios cerca de ti',
+        placeholder: 'Buscar fontanero, profesor...',
+        allCategories: 'Todas',
+        filters: 'Filtros',
+        clearFilters: 'Limpiar filtros',
+        expandRadius: 'Ampliar radio a 20 km',
+        states: {
+          emptyInitial: 'Todavía no hay servicios registrados en tu zona',
+          emptyFiltered: 'Ningún servicio coincide con estos filtros',
+          errorTitle: 'No pudimos cargar los servicios',
+          errorMessage: 'Comprueba tu conexión a internet e inténtalo de nuevo.',
+          retry: 'Reintentar',
+        },
+      },
+      listing: {
+        createTitle: 'Publicar Anuncio',
+        editTitle: 'Editar Anuncio',
+        step1: '1. Información básica',
+        step2: '2. Modelo de precio',
+        step3: '3. Ubicación y Cobertura',
+        step4: '4. Fotos y Confirmación',
+        pricingModels: {
+          fixed: 'Precio fijo',
+          hourly: 'Por hora',
+          quote: 'Bajo presupuesto',
+        },
+        minHours: 'Mínimo {{hours}} h',
+        startingFrom: 'Desde {{price}}',
+        favorite: 'Favorito',
+        report: 'Denunciar',
+        requestBooking: 'Solicitar Reserva',
+        editListing: 'Editar Anuncio',
+        paused: 'Pausado',
+        underReview: 'En revisión',
+        removed: 'Retirado',
+      },
+      review: {
+        title: 'Dejar Reseña',
+        rating: 'Calificación',
+        comment: 'Comentario',
+        submit: 'Publicar Reseña',
+        blocked: {
+          not_your_booking: 'No puedes reseñar un servicio que no contrataste tú.',
+          not_completed: 'Debes esperar a que el servicio sea completado para reseñar.',
+          already_reviewed: 'Ya enviaste una reseña para esta reserva.',
+          window_closed: 'El plazo de 30 días para dejar reseña ha expirado.',
+        },
+      },
+      admin: {
+        title: 'Espacio de Administración de Capacidades',
+        subtitle: 'Control total de permisos y conversión Cliente ↔ Proveedor',
+        userManagement: 'Gestión de Usuarios y Capacidades',
+        globalSettings: 'Políticas Globales de Autoconversión',
+        allowCustomerToProvider: 'Permitir que Clientes se conviertan en Proveedores',
+        allowProviderToCustomer: 'Permitir que Proveedores adquieran capacidad de Cliente',
+        convertCustomerToProvider: 'Asignar Capacidad de Proveedor',
+        convertProviderToCustomer: 'Asignar Capacidad de Cliente',
+        capacitiesUpdated: 'Capacidades de usuario actualizadas correctamente',
+        settingsSaved: 'Políticas globales guardadas',
+        adminVisualsNotice: 'Como Administrador tienes acceso completo a todas las visuales (Cliente, Proveedor, Moderador y Administración).',
+      },
+      profile: {
+        title: 'Mi Perfil',
+        identitySimulator: 'Simulador de Identidad (Pruebas de Visuales)',
+        switchIdentityDesc: 'Cambia de usuario activo para probar instantáneamente cómo se adapta la app a cada combinación de capacidades y rol de plataforma.',
+        language: 'Idioma',
+        signOut: 'Cerrar Sesión',
+      },
+      location: {
+        permissionDeniedTitle: 'Ubicación no disponible',
+        permissionDeniedDesc: 'Has denegado el permiso de ubicación. Selecciona tu ciudad manualmente para ver servicios cerca.',
+        selectCity: 'Seleccionar ciudad',
+      },
+    },
+  },
+  en: {
+    translation: {
+      appName: 'Cerca',
+      tagline: 'Local Services Marketplace',
+      nav: {
+        search: 'Search',
+        bookings: 'Bookings',
+        providerHub: 'My Listings',
+        adminPanel: 'Admin',
+        profile: 'Profile',
+      },
+      capacities: {
+        customer: 'Customer',
+        provider: 'Provider',
+        both: 'Customer & Provider',
+      },
+      roles: {
+        user: 'User',
+        moderator: 'Moderator',
+        admin: 'Administrator',
+      },
+      search: {
+        title: 'Services near you',
+        placeholder: 'Search plumber, teacher...',
+        allCategories: 'All',
+        filters: 'Filters',
+        clearFilters: 'Clear filters',
+        expandRadius: 'Expand radius to 20 km',
+        states: {
+          emptyInitial: 'No services available in your area yet',
+          emptyFiltered: 'No services match these filters',
+          errorTitle: 'Could not load services',
+          errorMessage: 'Please check your connection and try again.',
+          retry: 'Retry',
+        },
+      },
+      listing: {
+        createTitle: 'Create Listing',
+        editTitle: 'Edit Listing',
+        step1: '1. Basic info',
+        step2: '2. Pricing model',
+        step3: '3. Location & Radius',
+        step4: '4. Photos & Preview',
+        pricingModels: {
+          fixed: 'Fixed price',
+          hourly: 'Hourly rate',
+          quote: 'Quote required',
+        },
+        minHours: 'Min {{hours}} hrs',
+        startingFrom: 'Starting at {{price}}',
+        favorite: 'Favorite',
+        report: 'Report',
+        requestBooking: 'Request Booking',
+        editListing: 'Edit Listing',
+        paused: 'Paused',
+        underReview: 'Under review',
+        removed: 'Removed',
+      },
+      review: {
+        title: 'Leave Review',
+        rating: 'Rating',
+        comment: 'Comment',
+        submit: 'Submit Review',
+        blocked: {
+          not_your_booking: 'You cannot review a booking you did not place.',
+          not_completed: 'You must wait until the booking is completed to review.',
+          already_reviewed: 'You have already submitted a review for this booking.',
+          window_closed: 'The 30-day window to leave a review has expired.',
+        },
+      },
+      admin: {
+        title: 'Admin Capacity Management Space',
+        subtitle: 'Full control of permissions and Customer ↔ Provider conversion',
+        userManagement: 'User Capacity Management',
+        globalSettings: 'Global Self-Service Policies',
+        allowCustomerToProvider: 'Allow Customers to become Providers',
+        allowProviderToCustomer: 'Allow Providers to acquire Customer capacity',
+        convertCustomerToProvider: 'Assign Provider Capacity',
+        convertProviderToCustomer: 'Assign Customer Capacity',
+        capacitiesUpdated: 'User capacities updated successfully',
+        settingsSaved: 'Global settings saved',
+        adminVisualsNotice: 'As Administrator, you have complete access to all views (Customer, Provider, Moderator, and Admin).',
+      },
+      profile: {
+        title: 'My Profile',
+        identitySimulator: 'Identity Simulator (Visual Testing)',
+        switchIdentityDesc: 'Switch active user to test how the app responds to each capacity & platform role combination.',
+        language: 'Language',
+        signOut: 'Sign Out',
+      },
+      location: {
+        permissionDeniedTitle: 'Location unavailable',
+        permissionDeniedDesc: 'Location access was denied. Choose a city manually to explore services.',
+        selectCity: 'Select city',
+      },
+    },
+  },
+};
+
+if (!i18n.isInitialized) {
+  i18n.use(initReactI18next).init({
+    compatibilityJSON: 'v3',
+    resources,
+    lng: 'es',
+    fallbackLng: 'es',
+    interpolation: {
+      escapeValue: false,
+    },
+  });
+}
+
+export default i18n;
