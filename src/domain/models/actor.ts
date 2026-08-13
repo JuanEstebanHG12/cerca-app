@@ -25,3 +25,13 @@ export type Actor = z.infer<typeof actorSchema>;
 export function hasCapacity(actor: Actor, capacity: Capacity): boolean {
   return actor.capacities.includes(capacity);
 }
+
+// Mirrors the backend's PLATFORM_PERMISSIONS (@cerca/contract, auth/permissions.ts): only
+// 'moderator' and 'admin' are granted 'listing:moderate'/'report:resolve' — no Capacity grants
+// either one. Same disclaimer as hasCapacity: this only decides whether the app shows the
+// moderation queue entry point. The server's PolicyGuard is what actually blocks GET /reports
+// and POST /listings/:id/moderate · /reports/:id/resolve for anyone else — verified live, see
+// US-09-MODERATION-QUEUE.md §5.
+export function canModerate(actor: Actor): boolean {
+  return actor.platformRole === 'moderator' || actor.platformRole === 'admin';
+}

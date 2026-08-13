@@ -1,5 +1,6 @@
 import { CreateListingInput } from '../../domain/models/create-listing';
 import { Listing, ListingSearchPage } from '../../domain/models/listing';
+import { ModerateListingInput } from '../../domain/models/moderate-listing';
 import { SearchFilters } from '../../domain/models/search-filters';
 import { UpdateListingInput } from '../../domain/models/update-listing';
 
@@ -18,4 +19,7 @@ export interface ListingGateway {
   // The server is the one enforcing ownership (canEditListing/canChangePrice) — this just
   // carries the PATCH and lets whatever 403 comes back surface as-is.
   update(id: string, input: UpdateListingInput, accessToken: string): Promise<Listing>;
+  // 'listing:moderate' only (moderator/admin) — no ownership check on this one at all, unlike
+  // `update`. A moderator acts on anyone's listing, including their own.
+  moderate(id: string, input: ModerateListingInput, accessToken: string): Promise<Listing>;
 }

@@ -18,6 +18,8 @@ import { DEFAULT_RADIUS_KM, RADIUS_OPTIONS_KM, SearchFilters } from '../../src/d
 import { Coords } from '../../src/domain/models/coords';
 import { ListingSearchResult } from '../../src/domain/models/listing';
 import { findCity } from '../../src/domain/models/city';
+import { canModerate } from '../../src/domain/models/actor';
+import { useAuth } from '../../src/presentation/auth/auth-context';
 import { SignOutButton } from '../../src/presentation/auth/sign-out-button';
 import { Chip } from '../../src/presentation/components/chip';
 import { CityPicker } from '../../src/presentation/components/city-picker';
@@ -49,6 +51,7 @@ const PRICE_LOCALE_OPTIONS: readonly { id: string; label: string }[] = [
 ];
 
 export default function Home() {
+  const { actor } = useAuth();
   const origin = useSearchOrigin();
   const deviceLocale = useDeviceLocale();
   const [queryInput, setQueryInput] = useState('');
@@ -228,6 +231,18 @@ export default function Home() {
             Cerca
           </Text>
           <View style={styles.headerActions}>
+            {/* US-09: platformRole, not a capacity — canModerate mirrors the backend's
+                PLATFORM_PERMISSIONS (only 'moderator'/'admin' get 'report:resolve'), so this
+                is the one entry point on Home that ISN'T available to every signed-in account.
+                Hiding it is UX only; GET /reports itself rejects anyone else with 403
+                'no_capacity' regardless of whether they found this link. */}
+            {actor && canModerate(actor) ? (
+              <Pressable onPress={() => router.push('/moderation')} accessibilityRole="button" style={styles.headerLink}>
+                <Text style={styles.headerLinkLabel} maxFontSizeMultiplier={1.6}>
+                  Moderación
+                </Text>
+              </Pressable>
+            ) : null}
             {/* Every signed-in account is at least a customer, so this always shows now — it
                 used to be gated on hasCapacity(actor, 'provider') back when it only led to the
                 provider-only "Solicitudes recibidas" list. That screen now has a customer tab

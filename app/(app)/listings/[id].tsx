@@ -9,6 +9,7 @@ import { EmptyState } from '../../../src/presentation/listings/empty-state';
 import { formatPricingLabel, formatRatingSummary, statusBadgeLabel } from '../../../src/presentation/listings/format-listing';
 import { useCategories } from '../../../src/presentation/listings/use-categories';
 import { useListing } from '../../../src/presentation/listings/use-listing';
+import { ReportListingButton } from '../../../src/presentation/moderation/report-listing-button';
 import { colors } from '../../../src/presentation/theme/colors';
 
 const REQUEST_BOOKING_MESSAGES: Record<RequestBookingFailureReason, string> = {
@@ -102,6 +103,12 @@ export default function ListingDetail() {
         <Text style={styles.description} maxFontSizeMultiplier={1.8}>
           {data.description}
         </Text>
+
+        {/* US-09: reporting isn't gated by ownership or capacity on the server (any signed-in
+            account, see report-create.controller.ts) — hiding it for the owner is just sensible
+            UX (denouncing your own listing isn't a real user need), same spirit as hiding
+            "Solicitar reserva" for the owner just above. */}
+        {!isOwner ? <ReportListingButton listingId={data.id} /> : null}
       </ScrollView>
 
       {isOwner ? (

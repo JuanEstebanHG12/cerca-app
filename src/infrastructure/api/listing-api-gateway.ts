@@ -2,12 +2,14 @@ import { ListingGateway } from '../../application/ports/listing-gateway';
 import {
   CreateListingError,
   GetListingError,
+  ModerateListingError,
   PublishListingError,
   UpdateListingError,
   UpdateListingFailureReason,
 } from '../../domain/errors/listing-errors';
 import { CreateListingInput } from '../../domain/models/create-listing';
 import { Listing, listingSchema, ListingSearchPage, listingSearchPageSchema } from '../../domain/models/listing';
+import { ModerateListingInput } from '../../domain/models/moderate-listing';
 import { SearchFilters } from '../../domain/models/search-filters';
 import { UpdateListingInput } from '../../domain/models/update-listing';
 import { ApiError, NetworkError } from './api-errors';
@@ -64,6 +66,15 @@ export class ListingApiGateway implements ListingGateway {
       return listingSchema.parse(raw);
     } catch (error) {
       throw toUpdateListingError(error);
+    }
+  }
+
+  async moderate(id: string, input: ModerateListingInput, accessToken: string): Promise<Listing> {
+    try {
+      const raw = await httpClient.post<unknown>(`/listings/${id}/moderate`, input, accessToken);
+      return listingSchema.parse(raw);
+    } catch (error) {
+      throw toModerateListingError(error);
     }
   }
 }
@@ -135,4 +146,21 @@ function toUpdateListingError(error: unknown): UpdateListingError {
 
 function isEditForbiddenReason(reason: string | undefined): reason is UpdateListingFailureReason {
   return reason !== undefined && (EDIT_FORBIDDEN_REASONS as readonly string[]).includes(reason);
+}
+
+// Unlike toUpdateListingError, a 403 here is always 'no_capacity' — moderation isn't gated by
+// ownership (PolicyGuard only checks 'listing:moderate'), so there's no second reason a 403
+// could mean, and nothing to distinguish via `error.reason`.
+function toModerateListingError(error: unknown): ModerateListingError {
+  if (error instanceof ApiError) {
+    if (__DEV__ && (error.status === 400 || error.status === 422)) {
+      console.warn('[moderate-listing] server rejected the payload:', error.message);
+    }
+    if (error.status === 403) return new ModerateListingError('no_capacity', error.message);
+    if (error.status === 404) return new ModerateListingError('not_found', error.message);
+    if (error.status === 422 || error.status === 400) return new ModerateListingError('validation_error', error.message);
+    return new ModerateListingError('unexpected_error', error.message);
+  }
+  if (error instanceof NetworkError) return new ModerateListingError('network_error', error.message);
+  return new ModerateListingError('unexpected_error', error instanceof Error ? error.message : undefined);
 }
