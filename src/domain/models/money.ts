@@ -20,8 +20,16 @@ export type Money = z.infer<typeof moneySchema>;
 
 // Most currencies have 2 minor-unit digits, but not all: the yen has none, the Kuwaiti dinar
 // has three. Dividing by 100 unconditionally is the bug that looks right for MXN/USD and
-// silently corrupts JPY prices by 100x.
-const MINOR_UNIT_DIGITS: Partial<Record<CurrencyCode, number>> = {};
+// silently corrupts JPY prices by 100x. COP and CLP have none either — irrelevant for COP
+// today only because it happens to share the same 2-digit default as MXN/USD
+// (CURRENCY_OPTIONS, publish-form-schema.ts); it stops being irrelevant the moment the
+// backend contract adds a zero-decimal currency.
+const MINOR_UNIT_DIGITS: Partial<Record<CurrencyCode, number>> = {
+  COP: 0,
+  CLP: 0,
+  JPY: 0,
+  KWD: 3,
+};
 
 function minorUnitDigits(currency: CurrencyCode): number {
   return MINOR_UNIT_DIGITS[currency] ?? 2;

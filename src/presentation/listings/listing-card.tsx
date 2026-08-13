@@ -8,17 +8,21 @@ export const LISTING_CARD_HEIGHT = 112;
 
 interface ListingCardProps {
   listing: ListingSearchResult;
+  // Owned by Home (US-07's format picker), not detected per-card: every card in the list has
+  // to agree on one format, and re-deriving the device locale inside each of 5,000 cards would
+  // also defeat their own memo() the moment the OS locale hook re-renders.
+  locale: string;
   onPress: (id: string) => void;
 }
 
 // memo() only pays off if the parent's renderItem and press handlers are themselves stable
 // (Cerca.md: "las tres estabilizaciones, o memo() no sirve de nada") — `onPress` here must be
 // the parent's stabilized callback, not an inline arrow, or every render invalidates memo().
-export const ListingCard = memo(function ListingCard({ listing, onPress }: ListingCardProps) {
-  const price = formatPriceFromLabel(listing.priceFrom);
+export const ListingCard = memo(function ListingCard({ listing, locale, onPress }: ListingCardProps) {
+  const price = formatPriceFromLabel(listing.priceFrom, locale);
   const badge = statusBadgeLabel(listing.status);
   const ratingSummary = formatRatingSummary(listing.ratingAvg, listing.ratingCount);
-  const distance = formatDistance(listing.distanceMeters);
+  const distance = formatDistance(listing.distanceMeters, locale);
 
   // One accessible group per card: without this a screen reader stops at the image, the
   // title, the price, and the meta row separately — 5,000 results become 20,000 stops.

@@ -42,6 +42,18 @@ accounts: a foreign token against someone else's listing gets `403` with a machi
 PATCHes fields you actually changed (React Hook Form's `dirtyFields`) — resending an untouched
 price would incorrectly trip the backend's "no price changes while a booking is accepted" rule.
 
+### Requesting a booking
+
+From a listing that isn't your own and is published, tap "Solicitar reserva" on its detail
+screen. `POST /bookings` requires an `Idempotency-Key` header — generated once per screen visit
+(`expo-crypto`'s `randomUUID()`), reused for any retry of that same attempt. Verified live
+against a real race condition, not just read from the code: two truly concurrent requests with
+the same key got one `201` and one `409 IDEMPOTENCY_IN_PROGRESS`, never two bookings. The button
+disables itself while the request is in flight — that's the defense that actually stops a normal
+double-tap; the idempotency key is the backend's own safety net for whatever gets past that.
+Success navigates to `/bookings/[id]`, which always refetches rather than trusting a cached
+"requested" that might be stale by the time you look again.
+
 ### Backend data
 
 The Home/search screen has nothing to show against an empty database. From `cerca-api`, run:
@@ -99,14 +111,15 @@ that constructs the concrete gateway/storage implementations and hands the use c
 | Home / search | Done (US-02) | Geolocated `GET /listings`, debounced text query, category + radius filters, cursor pagination via `useInfiniteQuery`, virtualized `FlatList`. Four states covered: loading skeleton, error + retry, empty-initial (widen radius), empty-by-filter (clear filters / widen radius). Verified on a physical Android device (Expo Go SDK 57) against seeded data. |
 | Publish a listing | Done (US-03), photo upload blocked | 4-step wizard (basics → pricing → location → photos), single RHF form, resumable local draft (including picked photos), `POST /listings` + `POST /listings/:id/publish`. "Become a provider" flow included (`POST /me/capacities/provider` + token refresh — see [US-03-PUBLISH-LISTING.md §2](US-03-PUBLISH-LISTING.md#2-el-contrato-real-verificado-tres-veces)). Photo upload is best-effort behind a `PhotoGateway` port; it can't succeed until `cerca-api` ships `photos:presign`. Verified end-to-end against the real API (all three pricing models) and on a physical device, including the photo-upload failure path. |
 | Listing detail + edit own listing | Done (US-04) | `GET /listings/:id` detail screen (tap any search card), with an "Editar" button gated on `actor.id === listing.ownerId`. Edit form (title/description/pricing) PATCHes only changed fields. Server-side ownership (`canEditListing`/`canChangePrice`, `@cerca/contract`) verified live with two accounts — a non-owner's token is rejected with `403 {reason: 'not_owner'}` regardless of what the client shows. See [US-04-EDIT-LISTING.md](US-04-EDIT-LISTING.md). |
+| Request a booking | Done (US-05) | `POST /bookings` with a per-screen `Idempotency-Key` (`expo-crypto`), button disabled while pending. Verified live with a real concurrent race (two simultaneous requests, same key → one `201`, one `409 IDEMPOTENCY_IN_PROGRESS`, never two bookings), plus self-booking rejection (`403 {reason: 'own_listing'}`) and the booking-detail BOLA check (404, not 403, for a non-participant). New `/bookings/[id]` screen always refetches. See [US-05-REQUEST-BOOKING.md](US-05-REQUEST-BOOKING.md). |
+| Locale-aware price & distance | Done (US-07) | A "Precios en" chip row on the Home header (device / es-MX / en-US / de-DE) drives `formatMoney`/`formatDistance` for every card in the real list — not a separate screen. Defaults to the device locale (`expo-localization`'s `useLocales()`, reactive to an OS language change mid-session); picking a chip overrides it for the whole list. Distance switches to miles for the US/Liberia/Myanmar region set. |
+| Location fallback | Done (US-08) | `useSearchOrigin` wraps the existing `useLocation`/`GetCurrentLocationUseCase` (no second expo-location wrapper) and adds a `needs-city` phase: denying the permission (or no GPS fix) replaces the search results, in place, with `<CityPicker>` over six seeded cities — never a separate screen — and picking one searches from that city's centroid. The city picker only ever shows up in that phase; once location is granted it disappears on its own. |
 
 ### Known gaps (tracked, not silently dropped)
 
 - **No interactive map.** The search is location + list only; there's no draggable map view
   yet (would need `react-native-maps` + a Google Maps API key on Android). The cache-key
   design (`snapToGrid`) is already map-ready — a map view can reuse `useSearchListings` as-is.
-- **Location permission denied** currently shows an inline retry, not the city-picker fallback
-  (that's US-08, out of scope for this task).
 - **No photo upload.** `cerca-api` has a `ListingPhoto` table but no route/use-case that uses
   it — no `photos:presign`, nothing. The publish wizard's photo step (picker, preview, best-effort
   upload attempt) is built and ready; only the server side of the call is missing.
@@ -117,6 +130,15 @@ that constructs the concrete gateway/storage implementations and hands the use c
 - **Editing can't touch category or location.** `PATCH /listings/:id` (`updateListingSchema`,
   `@cerca/contract`) only accepts `title`/`description`/`pricing` — the backend doesn't allow
   the other two to change after creation, not a client omission.
+- **No "My Bookings" screen.** `GET /bookings?role=customer|provider` exists in `cerca-api` but
+  nothing calls it yet — requesting a booking navigates straight to that one booking's detail
+  screen, which is enough to demonstrate US-05's acceptance criterion without a list view.
+- **No accept/decline/complete/cancel flow.** Those are their own endpoints
+  (`booking:accept`, propiedad del anuncio) — out of scope for US-05, which is specifically
+  about requesting.
+- **No booking note.** `POST /bookings` accepts an optional `note`, but the request screen
+  doesn't collect one — not part of the acceptance criterion, and adding it wouldn't change the
+  mutation/idempotency behavior the story is actually about.
 - **No silent access-token refresh.** The app reads the current access token once per
   sign-in/sign-up/become-provider and holds it in memory; a request made after the 15-minute
   token TTL expires surfaces as a session error, not a transparent retry. The one place this

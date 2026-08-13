@@ -1,13 +1,26 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { RequestBookingFailureReason } from '../../../src/domain/errors/booking-errors';
 import { useAuth } from '../../../src/presentation/auth/auth-context';
+import { useRequestBooking } from '../../../src/presentation/bookings/use-request-booking';
 import { Button } from '../../../src/presentation/components/button';
 import { EmptyState } from '../../../src/presentation/listings/empty-state';
 import { formatPricingLabel, formatRatingSummary, statusBadgeLabel } from '../../../src/presentation/listings/format-listing';
 import { useCategories } from '../../../src/presentation/listings/use-categories';
 import { useListing } from '../../../src/presentation/listings/use-listing';
 import { colors } from '../../../src/presentation/theme/colors';
+
+const REQUEST_BOOKING_MESSAGES: Record<RequestBookingFailureReason, string> = {
+  own_listing: 'No puedes reservar tu propio anuncio.',
+  not_bookable: 'Este anuncio no está disponible para reservar en este momento.',
+  no_capacity: 'No tienes permiso para solicitar reservas.',
+  in_progress: 'Tu solicitud ya se está procesando. Espera un momento.',
+  validation_error: 'Revisa los datos e intenta de nuevo.',
+  not_found: 'No encontramos este anuncio.',
+  network_error: 'No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.',
+  unexpected_error: 'Algo salió mal. Intenta de nuevo en un momento.',
+};
 
 // US-04's whole acceptance criterion lives in one line below: `isOwner`. No capacity check
 // alongside it — a listing's ownerId only ever belongs to someone who was a provider the moment
@@ -21,6 +34,9 @@ export default function ListingDetail() {
   const { actor } = useAuth();
   const listing = useListing(id);
   const categories = useCategories();
+  // Called unconditionally (rules of hooks) even though the button only renders for a non-owner
+  // — it just mints an idempotency key and stays idle until requestBooking.mutate() is called.
+  const requestBooking = useRequestBooking(id);
 
   if (listing.status === 'pending') {
     return (
@@ -93,6 +109,28 @@ export default function ListingDetail() {
           <Button label="Editar" onPress={() => router.push(`/listings/${data.id}/edit`)} />
         </View>
       ) : null}
+
+      {!isOwner && data.status === 'published' ? (
+        <View style={styles.footer}>
+          <Button
+            label="Solicitar reserva"
+            onPress={() =>
+              requestBooking.mutate(undefined, {
+                onSuccess: (result) => {
+                  if (result.ok) router.push(`/bookings/${result.booking.id}`);
+                },
+              })
+            }
+            loading={requestBooking.isPending}
+            disabled={requestBooking.isPending}
+          />
+          {requestBooking.data && !requestBooking.data.ok ? (
+            <Text style={styles.bookingError} accessibilityLiveRegion="polite" maxFontSizeMultiplier={1.8}>
+              {REQUEST_BOOKING_MESSAGES[requestBooking.data.reason]}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -111,5 +149,6 @@ const styles = StyleSheet.create({
   priceContext: { fontSize: 14, fontWeight: '400', color: colors.inkMuted },
   rating: { fontSize: 14, color: colors.inkMuted },
   description: { fontSize: 15, color: colors.ink, lineHeight: 22, marginTop: 8 },
-  footer: { padding: 20, borderTopWidth: 1, borderTopColor: colors.surfaceBorder },
+  footer: { padding: 20, borderTopWidth: 1, borderTopColor: colors.surfaceBorder, gap: 8 },
+  bookingError: { fontSize: 14, color: colors.danger },
 });
