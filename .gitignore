@@ -42,3 +42,10 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# files .md
+US-02-HOME-SEARCH.md
+US-03-PUBLISH-LISTING.md
+US-04-EDIT-LISTING.md
+US-05-REQUEST-BOOKING.md
+US-06-REVIEW-BOOKING.md
