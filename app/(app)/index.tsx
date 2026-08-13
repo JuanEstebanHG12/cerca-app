@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Linking,
   ListRenderItemInfo,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,15 +15,20 @@ import {
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DEFAULT_RADIUS_KM, RADIUS_OPTIONS_KM, SearchFilters } from '../../src/domain/models/search-filters';
+import { Coords } from '../../src/domain/models/coords';
 import { ListingSearchResult } from '../../src/domain/models/listing';
+import { findCity } from '../../src/domain/models/city';
 import { SignOutButton } from '../../src/presentation/auth/sign-out-button';
+import { Chip } from '../../src/presentation/components/chip';
+import { CityPicker } from '../../src/presentation/components/city-picker';
 import { colors } from '../../src/presentation/theme/colors';
 import { EmptyState } from '../../src/presentation/listings/empty-state';
 import { FilterDraft, FiltersSheet } from '../../src/presentation/listings/filters-sheet';
 import { LISTING_CARD_HEIGHT, ListingCard } from '../../src/presentation/listings/listing-card';
 import { ListingListSkeleton } from '../../src/presentation/listings/listing-card-skeleton';
 import { useSearchListings } from '../../src/presentation/listings/use-search-listings';
-import { useLocation } from '../../src/presentation/location/use-location';
+import { useSearchOrigin } from '../../src/presentation/location/use-search-origin';
+import { useDeviceLocale } from '../../src/infrastructure/locale/device-locale';
 
 const MAX_RADIUS_KM = RADIUS_OPTIONS_KM[RADIUS_OPTIONS_KM.length - 1];
 
@@ -30,13 +37,28 @@ function nextRadius(current: number): number {
   return wider ?? MAX_RADIUS_KM;
 }
 
+// US-07: how the user wants to *read* price and distance — a preference of whoever is
+// looking, independent of where they're searching from (US-08's origin). 'device' isn't a
+// fourth locale, it's "don't override, use whatever the OS is already set to".
+const DEVICE_LOCALE_ID = 'device';
+const PRICE_LOCALE_OPTIONS: readonly { id: string; label: string }[] = [
+  { id: DEVICE_LOCALE_ID, label: 'Mi dispositivo' },
+  { id: 'es-MX', label: 'es-MX' },
+  { id: 'en-US', label: 'en-US' },
+  { id: 'de-DE', label: 'de-DE' },
+];
+
 export default function Home() {
-  const location = useLocation();
+  const origin = useSearchOrigin();
+  const deviceLocale = useDeviceLocale();
   const [queryInput, setQueryInput] = useState('');
   const [committedQuery, setCommittedQuery] = useState('');
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const [radiusKm, setRadiusKm] = useState<number>(DEFAULT_RADIUS_KM);
   const [filtersVisible, setFiltersVisible] = useState(false);
+  const [priceLocaleId, setPriceLocaleId] = useState<string>(DEVICE_LOCALE_ID);
+
+  const priceLocale = priceLocaleId === DEVICE_LOCALE_ID ? deviceLocale : priceLocaleId;
 
   const hasActiveFilters = committedQuery !== '' || categoryId !== undefined;
 
@@ -47,23 +69,33 @@ export default function Home() {
     return () => clearTimeout(id);
   }, [queryInput]);
 
-  const filters: SearchFilters | null =
-    location.status === 'granted'
-      ? {
-          coords: location.coords,
-          radiusKm,
-          query: committedQuery || undefined,
-          categoryId,
-        }
-      : null;
+  // US-08: no device coordinates doesn't mean no search — a picked city resolves to its
+  // centroid (findCity) and searches from there instead, same SearchFilters shape either way.
+  const originCoords: Coords | undefined =
+    origin.state.phase === 'coords'
+      ? origin.state.coords
+      : origin.state.phase === 'city'
+        ? findCity(origin.state.cityId)?.coords
+        : undefined;
+
+  const filters: SearchFilters | null = originCoords
+    ? {
+        coords: originCoords,
+        radiusKm,
+        query: committedQuery || undefined,
+        categoryId,
+      }
+    : null;
 
   const search = useSearchListings(filters);
   const items = useMemo(() => search.data?.pages.flatMap((page) => page.items) ?? [], [search.data]);
 
   const openListing = useCallback((id: string) => router.push(`/listings/${id}`), []);
   const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<ListingSearchResult>) => <ListingCard listing={item} onPress={openListing} />,
-    [openListing],
+    ({ item }: ListRenderItemInfo<ListingSearchResult>) => (
+      <ListingCard listing={item} locale={priceLocale} onPress={openListing} />
+    ),
+    [priceLocale, openListing],
   );
   const keyExtractor = useCallback((item: ListingSearchResult) => item.id, []);
   const getItemLayout = useCallback(
@@ -94,18 +126,44 @@ export default function Home() {
     setFiltersVisible(false);
   }
 
-  // Ordered explicitly, not as parallel ternaries: location 'denied' must win over search
+  // Ordered explicitly, not as parallel ternaries: 'needs-city' must win over search
   // 'pending', because a disabled query (no coords yet) stays 'pending' forever and would
-  // otherwise show the loading skeleton instead of the "no location" state.
+  // otherwise show the loading skeleton instead of the city picker.
   function renderBody() {
-    if (location.status === 'loading') return <ListingListSkeleton />;
-    if (location.status === 'denied') {
+    if (origin.state.phase === 'loading') return <ListingListSkeleton />;
+    if (origin.state.phase === 'needs-city') {
+      const { reason, canAskAgain } = origin.state;
       return (
-        <EmptyState
-          title="No pudimos acceder a tu ubicación"
-          message="Cerca necesita tu ubicación para mostrarte servicios cercanos."
-          primaryAction={{ label: 'Reintentar', onPress: location.retry }}
-        />
+        <View style={styles.cityFallback}>
+          <Text style={styles.cityFallbackTitle} maxFontSizeMultiplier={1.6}>
+            {reason === 'denied' ? 'No compartiste tu ubicación' : 'No pudimos acceder a tu ubicación'}
+          </Text>
+          <Text style={styles.cityFallbackMessage} maxFontSizeMultiplier={1.8}>
+            {reason === 'denied'
+              ? 'Elige una ciudad para seguir buscando servicios cerca de ti.'
+              : 'Puede que el GPS esté apagado. Elige una ciudad mientras tanto.'}
+          </Text>
+          <CityPicker onSelect={origin.selectCity} />
+          {/* canAskAgain: false means the OS won't show its own permission dialog anymore —
+              tapping "reintentar" would just silently resolve denied again. The only way back
+              is Settings; retry stays underneath for after the user flips it there. */}
+          {!canAskAgain && (
+            <Pressable
+              onPress={() => Linking.openSettings()}
+              accessibilityRole="button"
+              style={styles.cityFallbackRetry}
+            >
+              <Text style={styles.cityFallbackRetryLabel} maxFontSizeMultiplier={1.6}>
+                Abrir configuración
+              </Text>
+            </Pressable>
+          )}
+          <Pressable onPress={origin.retryLocation} accessibilityRole="button" style={styles.cityFallbackRetry}>
+            <Text style={styles.cityFallbackRetryLabel} maxFontSizeMultiplier={1.6}>
+              Reintentar con mi ubicación
+            </Text>
+          </Pressable>
+        </View>
       );
     }
     if (search.status === 'pending') return <ListingListSkeleton />;
@@ -191,6 +249,14 @@ export default function Home() {
         <Text style={styles.tagline} maxFontSizeMultiplier={1.8}>
           Servicios cerca de ti
         </Text>
+        {origin.state.phase === 'city' && (
+          <Pressable onPress={origin.retryLocation} accessibilityRole="button" style={styles.cityBanner}>
+            <Text style={styles.cityBannerText} maxFontSizeMultiplier={1.6}>
+              Buscando cerca de {findCity(origin.state.cityId)?.name} ·{' '}
+              <Text style={styles.cityBannerAction}>Cambiar</Text>
+            </Text>
+          </Pressable>
+        )}
         <View style={styles.searchRow}>
           <TextInput
             placeholder="Buscar un servicio…"
@@ -212,6 +278,25 @@ export default function Home() {
               Filtros
             </Text>
           </Pressable>
+        </View>
+
+        {/* US-07: the same listing (same Money, same distanceMeters) read three different
+            ways — this drives every card below, not a separate screen someone has to know to
+            go look for. */}
+        <View style={styles.localeRow}>
+          <Text style={styles.localeLabel} maxFontSizeMultiplier={1.6}>
+            Precios en
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.localeChips}>
+            {PRICE_LOCALE_OPTIONS.map((option) => (
+              <Chip
+                key={option.id}
+                label={option.label}
+                selected={option.id === priceLocaleId}
+                onPress={() => setPriceLocaleId(option.id)}
+              />
+            ))}
+          </ScrollView>
         </View>
       </View>
 
@@ -274,6 +359,17 @@ const styles = StyleSheet.create({
   filterButtonLabel: { fontSize: 14, fontWeight: '600', color: colors.ink },
   listContent: { paddingHorizontal: 20 },
   footerLoading: { paddingVertical: 20 },
+  cityBanner: { alignSelf: 'flex-start', minHeight: 24, justifyContent: 'center' },
+  cityBannerText: { fontSize: 13, color: colors.inkMuted },
+  cityBannerAction: { color: colors.accent, fontWeight: '600' },
+  cityFallback: { flex: 1, padding: 20, gap: 16 },
+  cityFallbackTitle: { fontSize: 17, fontWeight: '700', color: colors.ink },
+  cityFallbackMessage: { fontSize: 14, color: colors.inkMuted },
+  cityFallbackRetry: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' },
+  cityFallbackRetryLabel: { color: colors.accent, fontSize: 14, fontWeight: '600' },
+  localeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
+  localeLabel: { fontSize: 13, fontWeight: '600', color: colors.inkMuted },
+  localeChips: { flexDirection: 'row', gap: 8 },
   fab: {
     position: 'absolute',
     right: 20,
