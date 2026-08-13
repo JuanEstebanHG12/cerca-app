@@ -54,3 +54,20 @@ export class UpdateListingError extends Error {
     this.name = 'UpdateListingError';
   }
 }
+
+// POST /listings/:id/moderate — 'no_capacity' for a 403 (missing 'listing:moderate', same
+// PolicyGuard shape as everything else in this file), not the four-reason EditListingReason
+// above: moderation isn't gated by ownership at all, a moderator can act on anyone's listing.
+export type ModerateListingFailureReason =
+  | 'no_capacity'
+  | 'not_found'
+  | 'validation_error'
+  | 'network_error'
+  | 'unexpected_error';
+
+export class ModerateListingError extends Error {
+  constructor(readonly reason: ModerateListingFailureReason, message?: string) {
+    super(message ?? reason);
+    this.name = 'ModerateListingError';
+  }
+}
