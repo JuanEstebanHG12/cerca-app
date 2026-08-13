@@ -26,7 +26,10 @@ export class BecomeProviderUseCase {
       // server just granted it. `refresh` re-reads the user and issues a token that carries
       // the new capacity, which is also what needs to survive a restart.
       const refreshed = await this.authGateway.refresh(session.refreshToken);
-      await this.sessionStorage.save(refreshed);
+      // `refresh` only returns what the server actually knows (accessToken, refreshToken,
+      // actor) — `email` never came from the server in the first place, so it has to be
+      // carried forward from the session already on disk or it would quietly disappear here.
+      await this.sessionStorage.save({ ...refreshed, email: session.email });
       return { ok: true, actor: refreshed.actor };
     } catch (error) {
       if (error instanceof BecomeProviderError) {

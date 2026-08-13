@@ -1,4 +1,4 @@
-import { Session } from '../../domain/models/session';
+import { StoredSession } from '../../domain/models/session';
 import { SessionStorage } from '../ports/session-storage';
 
 // Runs once, at app boot, before anything is rendered. This is what makes "session survives
@@ -6,7 +6,7 @@ import { SessionStorage } from '../ports/session-storage';
 export class RestoreSessionUseCase {
   constructor(private readonly sessionStorage: SessionStorage) {}
 
-  execute(): Promise<Session | null> {
+  execute(): Promise<StoredSession | null> {
     return this.sessionStorage.load();
   }
 }
