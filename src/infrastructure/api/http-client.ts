@@ -34,11 +34,13 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
 // Thin fetch wrapper, nothing more: no caching, no retries. Callers own response validation —
 // this only speaks HTTP, it doesn't know what a Session or an Actor is.
 export const httpClient = {
-  post: <T>(path: string, payload: unknown, accessToken?: string): Promise<T> =>
+  // `extraHeaders` exists for Idempotency-Key (POST /bookings, POST /bookings/:id/review) — the
+  // one case so far where a POST needs a header beyond Authorization.
+  post: <T>(path: string, payload: unknown, accessToken?: string, extraHeaders?: Record<string, string>): Promise<T> =>
     request<T>(path, {
       method: 'POST',
       body: JSON.stringify(payload),
-      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+      headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined), ...extraHeaders },
     }),
   get: <T>(path: string, accessToken?: string): Promise<T> =>
     request<T>(path, {
