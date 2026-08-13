@@ -18,6 +18,11 @@ export function useListing(id: string) {
       if (!result.ok) throw new Error(result.reason);
       return result.listing;
     },
+    // `enabled` lets a caller pass '' before it actually knows the id yet (e.g. the booking
+    // detail screen, which needs a listing's title but only learns the listingId once its own
+    // booking has loaded) — this hook still has to be *called* unconditionally either way, or
+    // React's hooks-order check breaks; `enabled` is what makes calling it early harmless.
+    enabled: id !== '',
     // Overrides the global `shouldRetry` (query-client.ts), which only knows about ApiError —
     // by the time an error reaches here it's already the plain Error above. Retrying a bad id
     // three times is as pointless as retrying a denied permission; a network blip is worth it.

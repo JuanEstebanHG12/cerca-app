@@ -38,3 +38,23 @@ export class GetBookingError extends Error {
     this.name = 'GetBookingError';
   }
 }
+
+// Shared by accept/decline/complete — the three "provider manages a booking" actions. All three
+// fail for the exact same two reasons in cerca-api (see booking-guards.ts's loadOwnedListing,
+// and each use-case's own status check): you don't own the listing ('not_owner'), or the
+// booking isn't in the right state for this action ('invalid_state' — e.g. trying to accept a
+// booking that's already accepted). One error type for all three instead of three near-identical
+// copies.
+export type ManageBookingFailureReason =
+  | 'not_owner'
+  | 'invalid_state'
+  | 'not_found'
+  | 'network_error'
+  | 'unexpected_error';
+
+export class ManageBookingError extends Error {
+  constructor(readonly reason: ManageBookingFailureReason, message?: string) {
+    super(message ?? reason);
+    this.name = 'ManageBookingError';
+  }
+}

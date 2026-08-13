@@ -20,3 +20,11 @@ export const bookingSchema = z.object({
   reviewId: z.string().nullable(),
 });
 export type Booking = z.infer<typeof bookingSchema>;
+
+// What GET /bookings?role=customer|provider returns — a page of full bookings, same shape as
+// a single one, just wrapped in {items, nextCursor} (same pagination shape as listings/reviews).
+export const bookingPageSchema = z.object({
+  items: z.array(bookingSchema),
+  nextCursor: z.string().nullable(),
+});
+export type BookingPage = z.infer<typeof bookingPageSchema>;
