@@ -23,11 +23,24 @@ pnpm ios           # expo run:ios
 Requires the 'provider' capacity, which the app grants in-flow (tap "Publicar" → "Convertirme
 en proveedor" if you signed in as a plain customer) — `provider@cerca.app` already has it from
 the seed. Access tokens bake in capacities at issue time (see
-[US-03-PUBLISH-LISTING.md §2](US-03-PUBLISH-LISTING.md#2-el-contrato-real-verificado-dos-veces)),
+[US-03-PUBLISH-LISTING.md §2](US-03-PUBLISH-LISTING.md#2-el-contrato-real-verificado-tres-veces)),
 so becoming a provider triggers a token refresh automatically; nothing to do manually.
 
-There's no photo upload — the backend doesn't implement `photos:presign` yet (verified against
-the real `cerca-api` source, not assumed from the product doc). The wizard is 3 steps, not 4.
+The wizard is 4 steps, including photos (picker, local preview, remove). Photo **upload** itself
+still can't complete — the backend doesn't implement `photos:presign` yet (verified against the
+real `cerca-api` source, not assumed from the product doc). Uploading is best-effort: a listing
+still publishes even if its photos fail to attach, and the wizard says so explicitly instead of
+navigating away in silence.
+
+### Editing your own listing
+
+Tap any card from search to open its detail screen. The "Editar" button only renders when
+`actor.id === listing.ownerId` — that's UX, not the real gate. The server (`canEditListing` /
+`canChangePrice` in `@cerca/contract`) is what actually enforces it, verified live with two test
+accounts: a foreign token against someone else's listing gets `403` with a machine-readable
+`reason` (`not_owner`, `no_capacity`, …) before the app ever shows anything. The edit form only
+PATCHes fields you actually changed (React Hook Form's `dirtyFields`) — resending an untouched
+price would incorrectly trip the backend's "no price changes while a booking is accepted" rule.
 
 ### Backend data
 
@@ -84,7 +97,8 @@ that constructs the concrete gateway/storage implementations and hands the use c
 |---|---|---|
 | Sign in / sign up | Done (US-01) | Session persists across restarts; no login flicker on boot. |
 | Home / search | Done (US-02) | Geolocated `GET /listings`, debounced text query, category + radius filters, cursor pagination via `useInfiniteQuery`, virtualized `FlatList`. Four states covered: loading skeleton, error + retry, empty-initial (widen radius), empty-by-filter (clear filters / widen radius). Verified on a physical Android device (Expo Go SDK 57) against seeded data. |
-| Publish a listing | Done (US-03), no photos | 3-step wizard (basics → pricing → location), single RHF form, resumable local draft, `POST /listings` + `POST /listings/:id/publish`. "Become a provider" flow included (`POST /me/capacities/provider` + token refresh — see [US-03-PUBLISH-LISTING.md §2](US-03-PUBLISH-LISTING.md#2-el-contrato-real-verificado-dos-veces)). Verified end-to-end against the real API (all three pricing models); not yet tested on a physical device. |
+| Publish a listing | Done (US-03), photo upload blocked | 4-step wizard (basics → pricing → location → photos), single RHF form, resumable local draft (including picked photos), `POST /listings` + `POST /listings/:id/publish`. "Become a provider" flow included (`POST /me/capacities/provider` + token refresh — see [US-03-PUBLISH-LISTING.md §2](US-03-PUBLISH-LISTING.md#2-el-contrato-real-verificado-tres-veces)). Photo upload is best-effort behind a `PhotoGateway` port; it can't succeed until `cerca-api` ships `photos:presign`. Verified end-to-end against the real API (all three pricing models) and on a physical device, including the photo-upload failure path. |
+| Listing detail + edit own listing | Done (US-04) | `GET /listings/:id` detail screen (tap any search card), with an "Editar" button gated on `actor.id === listing.ownerId`. Edit form (title/description/pricing) PATCHes only changed fields. Server-side ownership (`canEditListing`/`canChangePrice`, `@cerca/contract`) verified live with two accounts — a non-owner's token is rejected with `403 {reason: 'not_owner'}` regardless of what the client shows. See [US-04-EDIT-LISTING.md](US-04-EDIT-LISTING.md). |
 | Locale-aware price & distance | Done (US-07) | A "Precios en" chip row on the Home header (device / es-MX / en-US / de-DE) drives `formatMoney`/`formatDistance` for every card in the real list — not a separate screen. Defaults to the device locale (`expo-localization`'s `useLocales()`, reactive to an OS language change mid-session); picking a chip overrides it for the whole list. Distance switches to miles for the US/Liberia/Myanmar region set. |
 | Location fallback | Done (US-08) | `useSearchOrigin` wraps the existing `useLocation`/`GetCurrentLocationUseCase` (no second expo-location wrapper) and adds a `needs-city` phase: denying the permission (or no GPS fix) replaces the search results, in place, with `<CityPicker>` over six seeded cities — never a separate screen — and picking one searches from that city's centroid. The city picker only ever shows up in that phase; once location is granted it disappears on its own. |
 
@@ -93,13 +107,16 @@ that constructs the concrete gateway/storage implementations and hands the use c
 - **No interactive map.** The search is location + list only; there's no draggable map view
   yet (would need `react-native-maps` + a Google Maps API key on Android). The cache-key
   design (`snapToGrid`) is already map-ready — a map view can reuse `useSearchListings` as-is.
-- **No listing detail screen yet** (`app/(app)/listings/[id].tsx` from the target route tree)
-  — cards are display-only for now.
 - **No photo upload.** `cerca-api` has a `ListingPhoto` table but no route/use-case that uses
-  it — no `photos:presign`, nothing. The publish wizard is 3 steps, not 4, until that exists.
-- **No "My Listings" screen.** Resuming a draft is local (the in-progress form autosaves to
-  `AsyncStorage` and restores on reopen) — there's no server-backed listing management screen
-  yet; that's US-04's scope (editing your own listings).
+  it — no `photos:presign`, nothing. The publish wizard's photo step (picker, preview, best-effort
+  upload attempt) is built and ready; only the server side of the call is missing.
+- **No "My Listings" screen.** `GET /me/listings` exists in `cerca-api` but nothing in the app
+  calls it yet. Not blocking: editing (US-04) works from any listing's detail screen (reached via
+  search), and a freshly published listing shows up in the owner's own nearby search results.
+  Resuming a draft is separately local (`AsyncStorage`), unaffected by this gap.
+- **Editing can't touch category or location.** `PATCH /listings/:id` (`updateListingSchema`,
+  `@cerca/contract`) only accepts `title`/`description`/`pricing` — the backend doesn't allow
+  the other two to change after creation, not a client omission.
 - **No silent access-token refresh.** The app reads the current access token once per
   sign-in/sign-up/become-provider and holds it in memory; a request made after the 15-minute
   token TTL expires surfaces as a session error, not a transparent retry. The one place this

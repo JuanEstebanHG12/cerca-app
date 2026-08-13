@@ -90,9 +90,12 @@ export default function Home() {
   const search = useSearchListings(filters);
   const items = useMemo(() => search.data?.pages.flatMap((page) => page.items) ?? [], [search.data]);
 
+  const openListing = useCallback((id: string) => router.push(`/listings/${id}`), []);
   const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<ListingSearchResult>) => <ListingCard listing={item} locale={priceLocale} />,
-    [priceLocale],
+    ({ item }: ListRenderItemInfo<ListingSearchResult>) => (
+      <ListingCard listing={item} locale={priceLocale} onPress={openListing} />
+    ),
+    [priceLocale, openListing],
   );
   const keyExtractor = useCallback((item: ListingSearchResult) => item.id, []);
   const getItemLayout = useCallback(

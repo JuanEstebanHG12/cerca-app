@@ -62,3 +62,11 @@ export function toMinorUnits(majorAmount: number, currency: CurrencyCode): numbe
   const digits = minorUnitDigits(currency);
   return Math.round(majorAmount * 10 ** digits);
 }
+
+// The inverse of `toMinorUnits`, for the edit form: it starts from a `Money` already fetched
+// from the server and needs a plain major-unit number to seed a `TextInput` with — not a
+// formatted string with a currency symbol, which is what `formatMoney` is for.
+export function fromMinorUnits(money: Money): number {
+  const digits = minorUnitDigits(money.currency);
+  return money.amountMinor / 10 ** digits;
+}

@@ -4,6 +4,7 @@ import { ApiError, NetworkError } from './api-errors';
 interface ProblemDetails {
   code?: string;
   detail?: string;
+  reason?: string;
 }
 
 async function request<T>(path: string, init: RequestInit): Promise<T> {
@@ -24,7 +25,7 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const problem = (body ?? {}) as ProblemDetails;
-    throw new ApiError(response.status, problem.code ?? 'UNKNOWN', problem.detail ?? response.statusText);
+    throw new ApiError(response.status, problem.code ?? 'UNKNOWN', problem.detail ?? response.statusText, problem.reason);
   }
 
   return body as T;
@@ -42,6 +43,12 @@ export const httpClient = {
   get: <T>(path: string, accessToken?: string): Promise<T> =>
     request<T>(path, {
       method: 'GET',
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+    }),
+  patch: <T>(path: string, payload: unknown, accessToken?: string): Promise<T> =>
+    request<T>(path, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
       headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
     }),
 };

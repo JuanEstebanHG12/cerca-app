@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isIntegerInRange, isPositiveAmount } from '../../domain/models/amount-validation';
 import { currencyCodeSchema } from '../../domain/models/money';
 import { localPhotoSchema } from '../../domain/models/listing-photo';
 
@@ -95,13 +96,3 @@ export const STEP_FIELDS: Record<number, (keyof PublishFormValues)[]> = {
   // so STEP_FIELDS keeps documenting every step's fields, not just the ones with rules.
   3: ['photos'],
 };
-
-function isPositiveAmount(value: string): boolean {
-  const amount = Number(value);
-  return value.trim() !== '' && Number.isFinite(amount) && amount > 0;
-}
-
-function isIntegerInRange(value: string, min: number, max: number): boolean {
-  const amount = Number(value);
-  return value.trim() !== '' && Number.isInteger(amount) && amount >= min && amount <= max;
-}

@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ListingSearchResult, ListingStatus } from '../../domain/models/listing';
 import { colors } from '../theme/colors';
 import { formatDistance, formatPriceFromLabel, formatRatingSummary, statusBadgeLabel } from './format-listing';
@@ -12,12 +12,13 @@ interface ListingCardProps {
   // to agree on one format, and re-deriving the device locale inside each of 5,000 cards would
   // also defeat their own memo() the moment the OS locale hook re-renders.
   locale: string;
+  onPress: (id: string) => void;
 }
 
 // memo() only pays off if the parent's renderItem and press handlers are themselves stable
-// (Cerca.md: "las tres estabilizaciones, o memo() no sirve de nada") — that's on the FlatList
-// wiring in the screen, not on this component.
-export const ListingCard = memo(function ListingCard({ listing, locale }: ListingCardProps) {
+// (Cerca.md: "las tres estabilizaciones, o memo() no sirve de nada") — `onPress` here must be
+// the parent's stabilized callback, not an inline arrow, or every render invalidates memo().
+export const ListingCard = memo(function ListingCard({ listing, locale, onPress }: ListingCardProps) {
   const price = formatPriceFromLabel(listing.priceFrom, locale);
   const badge = statusBadgeLabel(listing.status);
   const ratingSummary = formatRatingSummary(listing.ratingAvg, listing.ratingCount);
@@ -30,7 +31,13 @@ export const ListingCard = memo(function ListingCard({ listing, locale }: Listin
     .join(', ');
 
   return (
-    <View style={styles.card} accessible accessibilityLabel={accessibilityLabel}>
+    <Pressable
+      onPress={() => onPress(listing.id)}
+      accessibilityRole="button"
+      accessible
+      accessibilityLabel={accessibilityLabel}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+    >
       {/* Search results carry no photo (GET /listings doesn't return one) — this stays a
           plain placeholder until the backend contract adds photoUrl. */}
       <View style={styles.photo} />
@@ -57,7 +64,7 @@ export const ListingCard = memo(function ListingCard({ listing, locale }: Listin
           {ratingSummary} · {distance}
         </Text>
       </View>
-    </View>
+    </Pressable>
   );
 });
 
@@ -76,6 +83,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.surfaceBorder,
   },
+  cardPressed: { opacity: 0.7 },
   photo: {
     width: 88,
     height: 88,
