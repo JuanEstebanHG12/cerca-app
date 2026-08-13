@@ -7,6 +7,7 @@ import { SignOutUseCase } from '../../application/use-cases/sign-out';
 import { SignUpResult, SignUpUseCase } from '../../application/use-cases/sign-up';
 import { AuthApiGateway } from '../../infrastructure/api/auth-api-gateway';
 import { SecureSessionStorage } from '../../infrastructure/storage/secure-session-storage';
+import { queryClient } from '../query/query-client';
 
 // 'loading' is its own state, not `actor === null`, because "don't know yet" and "signed out"
 // need different UI: the first shows a splash screen, the second shows the login form. This
@@ -22,6 +23,11 @@ interface AuthContextValue {
   // short-lived, 15 min; a 401 mid-wizard surfaces as "vuelve a iniciar sesión", not a silent
   // retry — see US-03-PUBLISH-LISTING.md for why that's a documented gap, not an oversight).
   accessToken: string | null;
+  // The server never sends this back (see domain/models/session.ts) — it's the email whoever
+  // is signed in typed into the sign-in/sign-up form, carried in secure storage from then on.
+  // Exists for the "Perfil" screen (app/(app)/profile.tsx): there's no other way to show which
+  // account is currently active.
+  email: string | null;
   signIn: (email: string, password: string) => Promise<SignInResult>;
   signUp: (email: string, password: string, displayName: string) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
@@ -51,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [actor, setActor] = useState<Actor | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
 
   // Runs exactly once, on mount, before the app shows any route. Whatever this finds decides
   // whether the first screen the user sees is the home tab or the sign-in form.
@@ -60,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       setActor(session?.actor ?? null);
       setAccessToken(session?.accessToken ?? null);
+      setEmail(session?.email ?? null);
       setStatus(session ? 'signedIn' : 'signedOut');
     });
     return () => {
@@ -72,15 +80,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status,
       actor,
       accessToken,
+      email,
       async signIn(email, password) {
         const result = await useCases.signIn.execute(email, password);
         if (result.ok) {
           setActor(result.actor);
           // SignInUseCase already persisted the session; re-reading it here is the cheapest
-          // way to get the token into state without changing SignInResult's shape (nothing
-          // else that already depends on it needs to know a token exists).
+          // way to get the token (and email) into state without changing SignInResult's shape
+          // (nothing else that already depends on it needs to know a token exists).
           const session = await useCases.sessionStorage.load();
           setAccessToken(session?.accessToken ?? null);
+          setEmail(session?.email ?? null);
           setStatus('signedIn');
         }
         return result;
@@ -91,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setActor(result.actor);
           const session = await useCases.sessionStorage.load();
           setAccessToken(session?.accessToken ?? null);
+          setEmail(session?.email ?? null);
           setStatus('signedIn');
         }
         return result;
@@ -99,7 +110,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await useCases.signOut.execute();
         setActor(null);
         setAccessToken(null);
+        setEmail(null);
         setStatus('signedOut');
+        // Bug found by hand-testing: every cached query (search results, listing/booking
+        // details, "my bookings") is keyed WITHOUT the user's id — see listing-keys.ts and
+        // booking-keys.ts. That's fine for one account, but if a second account signs in
+        // afterwards in the same app session, it would see the FIRST account's cached data for
+        // a moment (or longer, within staleTime) before anything refetches. Wiping the whole
+        // cache on sign-out is the simplest fix: whoever signs in next starts from nothing.
+        queryClient.clear();
       },
       async becomeProvider() {
         const result = await useCases.becomeProvider.execute();
@@ -115,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return result;
       },
     }),
-    [status, actor, accessToken, useCases],
+    [status, actor, accessToken, email, useCases],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

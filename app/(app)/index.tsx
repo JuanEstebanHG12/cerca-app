@@ -169,7 +169,24 @@ export default function Home() {
           <Text style={styles.title} maxFontSizeMultiplier={1.4}>
             Cerca
           </Text>
-          <SignOutButton />
+          <View style={styles.headerActions}>
+            {/* Every signed-in account is at least a customer, so this always shows now — it
+                used to be gated on hasCapacity(actor, 'provider') back when it only led to the
+                provider-only "Solicitudes recibidas" list. That screen now has a customer tab
+                too (see app/(app)/bookings/index.tsx), so the entry point can't be provider-only
+                anymore either. */}
+            <Pressable onPress={() => router.push('/profile')} accessibilityRole="button" style={styles.headerLink}>
+              <Text style={styles.headerLinkLabel} maxFontSizeMultiplier={1.6}>
+                Perfil
+              </Text>
+            </Pressable>
+            <Pressable onPress={() => router.push('/bookings')} accessibilityRole="button" style={styles.headerLink}>
+              <Text style={styles.headerLinkLabel} maxFontSizeMultiplier={1.6}>
+                Reservas
+              </Text>
+            </Pressable>
+            <SignOutButton />
+          </View>
         </View>
         <Text style={styles.tagline} maxFontSizeMultiplier={1.8}>
           Servicios cerca de ti
@@ -228,6 +245,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16, gap: 4 },
   headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 10 },
+  headerLink: { minHeight: 44, justifyContent: 'center' },
+  headerLinkLabel: { fontSize: 14, fontWeight: '600', color: colors.accent },
   title: { fontSize: 24, fontWeight: '700', color: colors.ink },
   tagline: { fontSize: 14, color: colors.inkMuted, marginBottom: 8 },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },

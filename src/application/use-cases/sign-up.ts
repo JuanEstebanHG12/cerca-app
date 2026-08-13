@@ -15,8 +15,9 @@ export class SignUpUseCase {
     try {
       const session = await this.authGateway.signUp(email, password, displayName);
       // Same as sign-in: persist before returning "ok", so a freshly created account already
-      // survives a restart instead of needing a second sign-in to actually stick.
-      await this.sessionStorage.save(session);
+      // survives a restart instead of needing a second sign-in to actually stick. `email` is
+      // attached the same way sign-in.ts does — the server's response never carries it back.
+      await this.sessionStorage.save({ ...session, email });
       return { ok: true, actor: session.actor };
     } catch (error) {
       if (error instanceof SignUpError) {

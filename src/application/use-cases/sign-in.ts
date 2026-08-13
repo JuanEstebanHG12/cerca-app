@@ -17,9 +17,12 @@ export class SignInUseCase {
   async execute(email: string, password: string): Promise<SignInResult> {
     try {
       const session = await this.authGateway.signIn(email, password);
+      // The server never echoes the email back (session.ts explains why) — `email` here is
+      // the same string this method was just called with, attached before saving so the app
+      // can show "signed in as ___" later without the server's help.
+      await this.sessionStorage.save({ ...session, email });
       // Persist before returning: by the time the UI sees `ok: true`, the session already
       // survives a restart. Nothing about "logged in" is true until it's on disk.
-      await this.sessionStorage.save(session);
       return { ok: true, actor: session.actor };
     } catch (error) {
       if (error instanceof SignInError) {
