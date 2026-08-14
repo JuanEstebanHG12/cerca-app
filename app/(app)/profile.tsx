@@ -1,5 +1,6 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Link } from 'expo-router';
 import { hasCapacity } from '../../src/domain/models/actor';
 import { useAuth } from '../../src/presentation/auth/auth-context';
 import { colors } from '../../src/presentation/theme/colors';
@@ -64,6 +65,14 @@ export default function Profile() {
             </Text>
           </View>
         ) : null}
+
+        {actor?.platformRole === 'admin' && (
+          <Link href="/(app)/admin-capacities" asChild>
+            <TouchableOpacity style={styles.adminButton}>
+              <Text style={styles.adminButtonText}>🛡️ Panel de Administración</Text>
+            </TouchableOpacity>
+          </Link>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -77,4 +86,14 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600', color: colors.inkMuted },
   value: { fontSize: 17, fontWeight: '600', color: colors.ink },
   hint: { fontSize: 13, color: colors.inkMuted, lineHeight: 18 },
+  adminButton: {
+    backgroundColor: '#fef3c7',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  adminButtonText: { fontSize: 16, fontWeight: '700', color: '#92400e' },
 });
